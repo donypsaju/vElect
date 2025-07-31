@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V Elect - Offline School Election System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Library for reading Excel files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Libraries for generating PDF reports -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <!-- Library for generating audio tones -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .view { display: none; animation: fadeIn 0.5s ease-in-out; }
+        .active-view { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background-color: white; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); width: 90%; max-width: 500px; }
+        .counting-vote {
+            animation: flyToCandidate 1s ease-in-out;
+            position: absolute;
+            font-size: 2rem;
+            z-index: 100;
+        }
+        @keyframes flyToCandidate {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+    <div id="app-container" class="container mx-auto p-4">
+        <!-- Header -->
+        <header class="bg-white shadow rounded-lg p-4 mb-6 flex justify-between items-center">
+            <h1 id="header-title" class="text-2xl font-bold text-blue-600">School Election Portal</h1>
+            <button id="logout-button" class="hidden bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition">Logout</button>
+        </header>
+
+        <!-- Main Content Area -->
+        <main id="main-content">
+            <!-- STEP 1: Admin Login -->
+            <div id="login-view" class="view active-view max-w-md mx-auto bg-white p-8 rounded-xl shadow-md">
+                <h2 class="text-2xl font-bold text-center mb-6">Admin Login</h2>
+                <input id="admin-user" type="text" placeholder="Username" class="w-full p-3 mb-4 border rounded-lg" value="admin">
+                <input id="admin-pass" type="password" placeholder="Password" class="w-full p-3 mb-4 border rounded-lg" value="admin123">
+                <button id="login-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition">Login</button>
+            </div>
+
+            <!-- STEP 2: School Setup -->
+            <div id="school-setup-view" class="view max-w-lg mx-auto bg-white p-8 rounded-xl shadow-md">
+                <h2 class="text-2xl font-bold mb-4">Setup School</h2>
+                <p class="mb-4 text-gray-600">Enter the school code to begin.</p>
+                <input id="school-code-input" type="text" placeholder="School Code" class="w-full p-3 mb-4 border rounded-lg">
+                <div id="school-name-display" class="hidden p-3 mb-4 bg-green-100 text-green-800 rounded-lg"></div>
+                <button id="confirm-school-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition">Confirm School</button>
+            </div>
+
+            <!-- Admin Dashboard (Hub for all actions) -->
+            <div id="admin-dashboard-view" class="view">
+                <h2 class="text-3xl font-bold mb-6" id="dashboard-school-name"></h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- STEP 3: Upload Students -->
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <h3 class="text-xl font-bold mb-4">1. Student Data</h3>
+                        <p class="text-gray-600 mb-4">Upload the student list (.xlsx). Columns: name, class, gender.</p>
+                        <input type="file" id="student-file-input" accept=".xlsx, .xls" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                        <div id="student-data-status" class="mt-4 text-green-600 font-semibold"></div>
+                    </div>
+                    <!-- STEP 4: Create Election -->
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <h3 class="text-xl font-bold mb-4">2. Create Election</h3>
+                        <input id="election-name" type="text" placeholder="Election Name" class="w-full p-2 mb-3 border rounded">
+                        <input id="election-password" type="password" placeholder="Security Password" class="w-full p-2 mb-3 border rounded">
+                        <button id="create-election-btn" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 rounded-lg">Create</button>
+                        <div id="election-status" class="mt-4 text-green-600 font-semibold"></div>
+                    </div>
+                    <!-- STEP 5: Add Candidates -->
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <h3 class="text-xl font-bold mb-4">3. Add Candidates</h3>
+                        <select id="candidate-class-select" class="w-full p-2 mb-3 border rounded"></select>
+                        <select id="candidate-name-select" class="w-full p-2 mb-3 border rounded"></select>
+                        <input id="candidate-gender" type="text" placeholder="Gender (auto-filled)" class="w-full p-2 mb-3 border rounded bg-gray-100" readonly>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Candidate Image</label>
+                        <input type="file" id="candidate-image-input" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                        <button id="add-candidate-btn" class="w-full mt-3 bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 rounded-lg">Add Candidate</button>
+                    </div>
+                </div>
+                <!-- Navigation to other sections -->
+                <div class="mt-8 bg-white p-6 rounded-xl shadow-md">
+                    <h3 class="text-xl font-bold mb-4">4. Election Process</h3>
+                    <div class="flex space-x-4">
+                        <button id="goto-voting-btn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg">Start Voting</button>
+                        <button id="goto-counting-btn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg">Start Counting</button>
+                        <button id="goto-reports-btn" class="flex-1 bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 rounded-lg">View Reports</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- STEP 6 & 7: Voting View -->
+            <div id="voting-class-selection-view" class="view"></div>
+            <div id="voting-screen-view" class="view" oncontextmenu="return false;"></div>
+
+            <!-- STEP 10 & 11: Counting View -->
+            <div id="counting-class-selection-view" class="view"></div>
+            <div id="counting-screen-view" class="view"></div>
+
+            <!-- STEP 12: Reports View -->
+            <div id="reports-view" class="view"></div>
+        </main>
+    </div>
+
+    <!-- Modal for confirmations, password prompts, and results -->
+    <div id="modal" class="modal-backdrop hidden">
+        <div id="modal-content" class="modal-content">
+            <h3 id="modal-title" class="text-xl font-bold mb-4"></h3>
+            <div id="modal-body"></div>
+            <div id="modal-footer" class="mt-6 flex justify-end space-x-4">
+                <button id="modal-cancel-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancel</button>
+                <button id="modal-confirm-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+// --- APP INITIALIZATION ---
+document.addEventListener('DOMContentLoaded', () => {
+
+    // --- STATE MANAGEMENT ---
+    let appData = {
+        school: null,
+        students: [],
+        classes: {},
+        election: null,
+        currentVotingClass: null,
+        currentVoterIndex: 0,
+        loggedIn: false,
+    };
+
+    // This will hold the data from schools.json
+    let schoolsData = [];
+
+    // --- DOM ELEMENTS ---
+    const views = document.querySelectorAll('.view');
+    const headerTitle = document.getElementById('header-title');
+    const logoutButton = document.getElementById('logout-button');
+    const mainContent = document.getElementById('main-content');
+
+    // --- UTILITY FUNCTIONS ---
+    const saveState = () => {
+        try {
+            localStorage.setItem('electionAppData', JSON.stringify(appData));
+        } catch (e) {
+            console.error("Error saving state:", e);
+            // Handle potential storage errors, e.g., if image data is too large
+            alert("Could not save state. The browser storage might be full.");
+        }
+    };
+
+    const loadState = () => {
+        const savedData = localStorage.getItem('electionAppData');
+        if (savedData) {
+            appData = JSON.parse(savedData);
+            if (appData.loggedIn) {
+                if(appData.school) {
+                    showView('admin-dashboard-view');
+                    renderAdminDashboard();
+                } else {
+                    showView('school-setup-view');
+                }
+            }
+        }
+    };
+
+    const showView = (viewId) => {
+        views.forEach(v => v.classList.remove('active-view'));
+        const targetView = document.getElementById(viewId);
+        if (targetView) {
+            targetView.classList.add('active-view');
+            mainContent.appendChild(targetView); // Ensure it's inside main
+        }
+        logoutButton.classList.toggle('hidden', !appData.loggedIn || viewId === 'login-view');
+        headerTitle.textContent = appData.school ? `${appData.school.name} Election` : 'School Election Portal';
+    };
+
+    const showModal = (config) => {
+        const { title, body, onConfirm, confirmText = 'Confirm', onCancel, requiresInput = false } = config;
+        document.getElementById('modal-title').textContent = title;
+        const modalBody = document.getElementById('modal-body');
+        modalBody.innerHTML = body;
+        if (requiresInput) {
+            modalBody.innerHTML += `<input type="password" id="modal-password-input" class="w-full p-2 mt-4 border rounded">`;
+        }
+
+        const confirmBtn = document.getElementById('modal-confirm-btn');
+        const cancelBtn = document.getElementById('modal-cancel-btn');
+        
+        confirmBtn.textContent = confirmText;
+        confirmBtn.onclick = () => {
+            const input = document.getElementById('modal-password-input');
+            const inputValue = input ? input.value : null;
+            if (onConfirm) onConfirm(inputValue);
+            hideModal();
+        };
+        
+        cancelBtn.onclick = () => {
+            if (onCancel) onCancel();
+            hideModal();
+        };
+
+        document.getElementById('modal').classList.remove('hidden');
+    };
+
+    const hideModal = () => document.getElementById('modal').classList.add('hidden');
+
+    // --- STEP 1: LOGIN ---
+    document.getElementById('login-btn').addEventListener('click', () => {
+        const user = document.getElementById('admin-user').value;
+        const pass = document.getElementById('admin-pass').value;
+        if (user === 'admin' && pass === 'admin123') {
+            appData.loggedIn = true;
+            if (appData.school) {
+                showView('admin-dashboard-view');
+                renderAdminDashboard();
+            } else {
+                showView('school-setup-view');
+            }
+            saveState();
+        } else {
+            alert('Invalid credentials');
+        }
+    });
+    
+    logoutButton.addEventListener('click', () => {
+        appData.loggedIn = false;
+        showView('login-view');
+        localStorage.removeItem('electionAppData'); // Or just reset the loggedIn flag
+        window.location.reload();
+    });
+
+    // --- STEP 2: SCHOOL SETUP ---
+    document.getElementById('confirm-school-btn').addEventListener('click', () => {
+        const code = document.getElementById('school-code-input').value.trim();
+        // Find school in the data loaded from schools.json
+        const schoolInfo = schoolsData.find(school => school["School Code"] === code);
+        
+        if (schoolInfo) {
+            // Use the "School Name" property from the matched object
+            appData.school = { code, name: schoolInfo["School Name"] };
+            saveState();
+            showView('admin-dashboard-view');
+            renderAdminDashboard();
+        } else {
+            alert('Invalid School Code');
+        }
+    });
+
+    // --- STEP 3: STUDENT DATA ---
+    document.getElementById('student-file-input').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const data = new Uint8Array(event.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(worksheet);
+            
+            processStudentData(json);
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    const processStudentData = (students) => {
+        appData.students = students.map(s => ({...s, class: s.class.toString().trim()}));
+        appData.classes = {};
+        students.forEach(s => {
+            const className = s.class.toString().trim();
+            if (!appData.classes[className]) {
+                appData.classes[className] = [];
+            }
+            appData.classes[className].push(s);
+        });
+        saveState();
+        renderAdminDashboard();
+        
+        const classList = Object.keys(appData.classes).join(', ');
+        showModal({
+            title: "Student Data Processed",
+            body: `
+                <p><strong>Total Students:</strong> ${appData.students.length}</p>
+                <p><strong>Total Classes:</strong> ${Object.keys(appData.classes).length}</p>
+                <p class="mt-2"><strong>Classes Found:</strong> ${classList}</p>
+            `,
+            confirmText: 'OK'
+        });
+    };
+
+    // --- STEP 4: CREATE ELECTION ---
+    document.getElementById('create-election-btn').addEventListener('click', () => {
+        const name = document.getElementById('election-name').value;
+        const password = document.getElementById('election-password').value;
+        if (name && password) {
+            appData.election = {
+                id: Date.now(),
+                name,
+                password,
+                candidates: [],
+                votes: {}, // votes will be stored by class, e.g., { "10A": [...] }
+                classStatus: {} // e.g., { "10A": "completed" }
+            };
+            saveState();
+            renderAdminDashboard();
+        } else {
+            alert('Please provide both an election name and a password.');
+        }
+    });
+
+    // --- STEP 5: ADD CANDIDATES ---
+    const populateClassSelect = () => {
+        const select = document.getElementById('candidate-class-select');
+        select.innerHTML = '<option>Select a class</option>';
+        Object.keys(appData.classes).sort().forEach(className => {
+            select.innerHTML += `<option value="${className}">${className}</option>`;
+        });
+    };
+
+    document.getElementById('candidate-class-select').addEventListener('change', (e) => {
+        const className = e.target.value;
+        const nameSelect = document.getElementById('candidate-name-select');
+        nameSelect.innerHTML = '<option>Select a student</option>';
+        if (appData.classes[className]) {
+            appData.classes[className].forEach(student => {
+                nameSelect.innerHTML += `<option value="${student.name}">${student.name}</option>`;
+            });
+        }
+    });
+
+    document.getElementById('candidate-name-select').addEventListener('change', (e) => {
+        const studentName = e.target.value;
+        const className = document.getElementById('candidate-class-select').value;
+        const student = appData.classes[className]?.find(s => s.name === studentName);
+        document.getElementById('candidate-gender').value = student ? student.gender : '';
+    });
+
+    document.getElementById('add-candidate-btn').addEventListener('click', () => {
+        const className = document.getElementById('candidate-class-select').value;
+        const name = document.getElementById('candidate-name-select').value;
+        const gender = document.getElementById('candidate-gender').value;
+        const imageFile = document.getElementById('candidate-image-input').files[0];
+
+        if (!appData.election) { alert("Create an election first."); return; }
+        if (className === 'Select a class' || name === 'Select a student' || !imageFile) {
+            alert("Please fill all candidate details, including an image.");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const newCandidate = {
+                id: Date.now(),
+                name,
+                class: className,
+                gender,
+                image: e.target.result // Base64 string
+            };
+            appData.election.candidates.push(newCandidate);
+            saveState();
+            alert(`Candidate ${name} added successfully.`);
+            // Reset fields
+            document.getElementById('candidate-class-select').value = 'Select a class';
+            document.getElementById('candidate-name-select').innerHTML = '<option>Select a student</option>';
+            document.getElementById('candidate-gender').value = '';
+            document.getElementById('candidate-image-input').value = '';
+        };
+        reader.readAsDataURL(imageFile);
+    });
+
+    // --- RENDER FUNCTIONS ---
+    const renderAdminDashboard = () => {
+        document.getElementById('dashboard-school-name').textContent = `Dashboard: ${appData.school.name}`;
+        if (appData.students.length > 0) {
+            document.getElementById('student-data-status').textContent = `${appData.students.length} students loaded.`;
+            populateClassSelect();
+        }
+        if (appData.election) {
+            document.getElementById('election-status').textContent = `Active: ${appData.election.name}`;
+        }
+    };
+    
+    // --- NAVIGATION ---
+    document.getElementById('goto-voting-btn').addEventListener('click', () => {
+        if (!appData.election) { alert("Create an election first."); return; }
+        renderVotingClassSelection();
+        showView('voting-class-selection-view');
+    });
+    document.getElementById('goto-counting-btn').addEventListener('click', () => {
+        if (!appData.election) { alert("Create an election first."); return; }
+        renderCountingClassSelection();
+        showView('counting-class-selection-view');
+    });
+    document.getElementById('goto-reports-btn').addEventListener('click', () => {
+        if (!appData.election) { alert("Create an election first."); return; }
+        renderReportsView();
+        showView('reports-view');
+    });
+
+    // --- STEP 6 & 7: VOTING PROCESS ---
+    const renderVotingClassSelection = () => {
+        const container = document.getElementById('voting-class-selection-view');
+        container.innerHTML = `<h2 class="text-3xl font-bold mb-6">Start Voting for a Class</h2>
+            <button id="back-to-dash-1" class="mb-4 bg-gray-500 text-white p-2 rounded">Back to Dashboard</button>
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                ${Object.keys(appData.classes).sort().map(className => {
+                    const status = appData.election.classStatus[className];
+                    const isCompleted = status === 'voted';
+                    return `
+                        <button 
+                            class="p-4 rounded-lg shadow-md text-white font-bold text-xl ${isCompleted ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}"
+                            data-class="${className}"
+                            ${isCompleted ? 'disabled' : ''}
+                        >
+                            ${className}
+                            ${isCompleted ? '<br><span class="text-sm font-normal">Completed</span>' : ''}
+                        </button>
+                    `;
+                }).join('')}
+            </div>`;
+
+        container.querySelector('#back-to-dash-1').addEventListener('click', () => showView('admin-dashboard-view'));
+        container.querySelectorAll('button[data-class]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const className = e.currentTarget.dataset.class;
+                showModal({
+                    title: `Start Election for Class ${className}`,
+                    body: `Please enter the election security password.`,
+                    requiresInput: true,
+                    onConfirm: (password) => {
+                        if (password === appData.election.password) {
+                            startVotingForClass(className);
+                        } else {
+                            alert('Incorrect password.');
+                        }
+                    }
+                });
+            });
+        });
+    };
+
+    const startVotingForClass = (className) => {
+        appData.currentVotingClass = className;
+        appData.currentVoterIndex = 0;
+        if (!appData.election.votes[className]) {
+            appData.election.votes[className] = [];
+        }
+        renderVotingScreen();
+        showView('voting-screen-view');
+    };
+
+    const renderVotingScreen = () => {
+        const container = document.getElementById('voting-screen-view');
+        const className = appData.currentVotingClass;
+        const totalVoters = appData.classes[className].length;
+        const candidates = appData.election.candidates.filter(c => c.class === className);
+
+        container.innerHTML = `
+            <div class="text-center">
+                <h2 class="text-4xl font-bold">Voting for Class ${className}</h2>
+                <p id="voter-counter" class="text-2xl mt-2 text-gray-600">Voter ${appData.currentVoterIndex + 1} of ${totalVoters}</p>
+                <p class="text-lg mt-4">Click on the candidate of your choice.</p>
+            </div>
+            <div id="candidate-cards" class="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                ${candidates.map(c => `
+                    <div class="candidate-card bg-white rounded-2xl shadow-lg p-6 text-center cursor-pointer transition-transform transform hover:scale-105" data-candidate-id="${c.id}">
+                        <img src="${c.image}" alt="${c.name}" class="w-48 h-48 mx-auto rounded-full object-cover border-4 border-gray-200">
+                        <h3 class="mt-4 text-2xl font-bold">${c.name}</h3>
+                    </div>
+                `).join('')}
+            </div>
+            <div id="vote-cast-overlay" class="hidden fixed inset-0 bg-black bg-opacity-75 flex flex-col justify-center items-center text-white z-50">
+                <h2 class="text-5xl font-bold">Vote Cast!</h2>
+                <p class="text-2xl mt-4">Please wait for the admin to continue.</p>
+            </div>
+        `;
+
+        container.querySelectorAll('.candidate-card').forEach(card => {
+            card.addEventListener('click', handleVoteCast);
+        });
+    };
+    
+    const handleVoteCast = (e) => {
+        const card = e.currentTarget;
+        const candidateId = card.dataset.candidateId;
+
+        // Play beep sound
+        const synth = new Tone.Synth().toDestination();
+        synth.triggerAttackRelease("C5", "8n");
+
+        // Record vote
+        appData.election.votes[appData.currentVotingClass].push({
+            voterIndex: appData.currentVoterIndex,
+            candidateId: candidateId
+        });
+        saveState();
+
+        // Show overlay and disable further clicks
+        document.getElementById('vote-cast-overlay').classList.remove('hidden');
+        document.querySelectorAll('.candidate-card').forEach(c => c.style.pointerEvents = 'none');
+    };
+
+    // Keyboard listener for admin
+    document.addEventListener('keydown', (e) => {
+        if (document.getElementById('voting-screen-view').classList.contains('active-view')) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                // Check if a vote was cast for the current voter
+                if (appData.election.votes[appData.currentVotingClass].length > appData.currentVoterIndex) {
+                    appData.currentVoterIndex++;
+                    const totalVoters = appData.classes[appData.currentVotingClass].length;
+                    if (appData.currentVoterIndex < totalVoters) {
+                        renderVotingScreen(); // Reset for next voter
+                    } else {
+                        document.getElementById('voter-counter').innerHTML = '<span class="text-green-600 font-bold">All students have voted! Press ESC to finish.</span>';
+                    }
+                } else {
+                    alert("The current voter hasn't voted yet.");
+                }
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                showModal({
+                    title: `End Election for Class ${appData.currentVotingClass}`,
+                    body: `Please enter the election security password to confirm.`,
+                    requiresInput: true,
+                    onConfirm: (password) => {
+                        if (password === appData.election.password) {
+                            appData.election.classStatus[appData.currentVotingClass] = 'voted';
+                            saveState();
+                            renderVotingClassSelection();
+                            showView('voting-class-selection-view');
+                        } else {
+                            alert('Incorrect password.');
+                        }
+                    }
+                });
+            }
+        }
+    });
+
+    // --- STEP 10 & 11: COUNTING PROCESS ---
+    const renderCountingClassSelection = () => {
+        const container = document.getElementById('counting-class-selection-view');
+        const allVoted = Object.keys(appData.classes).every(c => appData.election.classStatus[c] === 'voted');
+        
+        container.innerHTML = `
+            <h2 class="text-3xl font-bold mb-6">Start Counting for a Class</h2>
+            <button id="back-to-dash-2" class="mb-4 bg-gray-500 text-white p-2 rounded">Back to Dashboard</button>
+            ${!allVoted ? `<div class="p-4 mb-4 bg-yellow-100 text-yellow-800 rounded-lg">Note: Not all classes have completed voting.</div>` : ''}
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                ${Object.keys(appData.classes).sort().map(className => {
+                    const status = appData.election.classStatus[className];
+                    const canCount = status === 'voted';
+                    const isCounted = status === 'counted';
+                    let btnClass = 'bg-gray-400 cursor-not-allowed';
+                    if (canCount) btnClass = 'bg-purple-600 hover:bg-purple-700';
+                    if (isCounted) btnClass = 'bg-gray-400 cursor-not-allowed';
+
+                    return `
+                        <button 
+                            class="p-4 rounded-lg shadow-md text-white font-bold text-xl ${btnClass}"
+                            data-class="${className}"
+                            ${!canCount ? 'disabled' : ''}
+                        >
+                            ${className}
+                            ${isCounted ? '<br><span class="text-sm font-normal">Counted</span>' : ''}
+                        </button>
+                    `;
+                }).join('')}
+            </div>
+        `;
+        container.querySelector('#back-to-dash-2').addEventListener('click', () => showView('admin-dashboard-view'));
+        container.querySelectorAll('button[data-class]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const className = e.currentTarget.dataset.class;
+                showModal({
+                    title: `Start Counting for Class ${className}`,
+                    body: `Please enter the election security password.`,
+                    requiresInput: true,
+                    onConfirm: (password) => {
+                        if (password === appData.election.password) {
+                            startCountingForClass(className);
+                        } else {
+                            alert('Incorrect password.');
+                        }
+                    }
+                });
+            });
+        });
+    };
+    
+    const startCountingForClass = (className) => {
+        renderCountingScreen(className);
+        showView('counting-screen-view');
+    };
+
+    const renderCountingScreen = (className) => {
+        const container = document.getElementById('counting-screen-view');
+        const candidates = appData.election.candidates
+            .filter(c => c.class === className)
+            .map(c => ({ ...c, votes: 0 })); // Add votes counter for UI
+
+        container.innerHTML = `
+            <div class="text-center">
+                <h2 class="text-4xl font-bold">Counting Votes for Class ${className}</h2>
+                <p id="counting-status" class="text-2xl mt-2 text-gray-600">Ready to start counting.</p>
+                <button id="begin-counting-btn" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg text-xl">Begin Counting</button>
+            </div>
+            <div id="counting-candidate-list" class="mt-8 space-y-4">
+                ${candidates.map(c => `
+                    <div class="candidate-result-item flex items-center bg-white p-4 rounded-lg shadow" data-candidate-id="${c.id}" data-votes="0">
+                        <img src="${c.image}" class="w-16 h-16 rounded-full mr-4 object-cover">
+                        <div class="flex-grow">
+                            <h3 class="text-xl font-bold">${c.name}</h3>
+                            <div class="w-full bg-gray-200 rounded-full h-4 mt-1">
+                                <div class="bg-blue-600 h-4 rounded-full" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                        <div class="text-2xl font-bold w-24 text-right" id="vote-count-${c.id}">0</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        document.getElementById('begin-counting-btn').addEventListener('click', (e) => {
+            e.target.disabled = true;
+            e.target.textContent = 'Counting...';
+            animateCounting(className);
+        });
+    };
+
+    const animateCounting = (className) => {
+        const votes = appData.election.votes[className];
+        const totalVotes = votes.length;
+        let i = 0;
+
+        const interval = setInterval(() => {
+            if (i >= totalVotes) {
+                clearInterval(interval);
+                document.getElementById('counting-status').textContent = 'Counting Complete!';
+                appData.election.classStatus[className] = 'counted';
+                saveState();
+                showResultModal(className);
+                return;
+            }
+
+            const vote = votes[i];
+            const candidateId = vote.candidateId;
+            document.getElementById('counting-status').textContent = `Counting vote ${i + 1} of ${totalVotes}`;
+
+            const candidateCard = document.querySelector(`.candidate-result-item[data-candidate-id='${candidateId}']`);
+            
+            // Animate vote
+            const voteEl = document.createElement('div');
+            voteEl.innerHTML = '🗳️';
+            voteEl.className = 'counting-vote';
+            document.body.appendChild(voteEl);
+            const rect = candidateCard.getBoundingClientRect();
+            voteEl.style.left = (window.innerWidth / 2) + 'px';
+            voteEl.style.top = (window.innerHeight - 50) + 'px';
+            
+            setTimeout(() => {
+                voteEl.style.transform = `translate(${rect.left - window.innerWidth/2 + rect.width/2}px, ${rect.top - window.innerHeight + 50}px) scale(1.5)`;
+                voteEl.style.opacity = 0;
+            }, 50);
+
+            setTimeout(() => {
+                voteEl.remove();
+                // Update count
+                const currentVotes = parseInt(candidateCard.dataset.votes) + 1;
+                candidateCard.dataset.votes = currentVotes;
+                document.getElementById(`vote-count-${candidateId}`).textContent = currentVotes;
+
+                // Update progress bar
+                const percentage = totalVotes > 0 ? (currentVotes / totalVotes) * 100 : 0;
+                candidateCard.querySelector('.bg-blue-600').style.width = `${percentage}%`;
+
+                // Re-sort list
+                const list = document.getElementById('counting-candidate-list');
+                const items = Array.from(list.children);
+                items.sort((a, b) => parseInt(b.dataset.votes) - parseInt(a.dataset.votes));
+                items.forEach(item => list.appendChild(item));
+            }, 500);
+
+            i++;
+        }, 1000); // 1 second per vote
+    };
+
+    const showResultModal = (className) => {
+        const candidates = appData.election.candidates.filter(c => c.class === className);
+        const votes = appData.election.votes[className];
+        const results = {};
+        candidates.forEach(c => results[c.id] = { ...c, count: 0 });
+        votes.forEach(v => {
+            if (results[v.candidateId]) {
+                results[v.candidateId].count++;
+            }
+        });
+
+        const sortedResults = Object.values(results).sort((a, b) => b.count - a.count);
+        const winner = sortedResults[0];
+        const isDraw = sortedResults.length > 1 && sortedResults[0].count === sortedResults[1].count;
+        const totalVotes = votes.length;
+
+        let body = '';
+        if (isDraw) {
+            body = `<h2 class="text-2xl font-bold text-center text-red-600">It's a Draw!</h2>`;
+        } else {
+            body = `
+                <div class="text-center">
+                    <img src="${winner.image}" class="w-32 h-32 mx-auto rounded-full object-cover border-4 border-green-400">
+                    <h2 class="text-2xl font-bold mt-4">Congratulations, ${winner.name}!</h2>
+                    <p class="text-lg text-gray-700">Selected as the representative for Class ${className}.</p>
+                    <p class="text-xl font-semibold mt-2">${winner.count} Votes (${totalVotes > 0 ? ((winner.count/totalVotes)*100).toFixed(1) : 0}%)</p>
+                </div>
+            `;
+        }
+        
+        body += '<hr class="my-4"><h4 class="font-bold mb-2">Full Results:</h4>';
+        sortedResults.forEach(r => {
+            body += `<p>${r.name}: ${r.count} votes</p>`;
+        });
+
+        showModal({
+            title: `Results for Class ${className}`,
+            body: body,
+            confirmText: 'OK',
+            onConfirm: () => {
+                renderCountingClassSelection();
+                showView('counting-class-selection-view');
+            }
+        });
+    };
+    
+    // --- STEP 12: REPORTS ---
+    const renderReportsView = () => {
+        const container = document.getElementById('reports-view');
+        container.innerHTML = `
+            <h2 class="text-3xl font-bold mb-6">Election Reports</h2>
+            <button id="back-to-dash-3" class="mb-4 bg-gray-500 text-white p-2 rounded">Back to Dashboard</button>
+            <div class="bg-white p-6 rounded-xl shadow-md space-y-4">
+                <p>Generate PDF reports for the completed election.</p>
+                <div class="flex space-x-4">
+                    <button id="report-winners-btn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg">Generate Winner's List</button>
+                    <button id="report-detailed-btn" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg">Generate Detailed Report</button>
+                </div>
+            </div>
+        `;
+        container.querySelector('#back-to-dash-3').addEventListener('click', () => showView('admin-dashboard-view'));
+        document.getElementById('report-winners-btn').addEventListener('click', generateWinnersReport);
+        document.getElementById('report-detailed-btn').addEventListener('click', generateDetailedReport);
+    };
+
+    const generateWinnersReport = () => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setFontSize(18);
+        doc.text(`${appData.school.name} - Election Winners`, 14, 22);
+        doc.setFontSize(12);
+        doc.text(`Report for: ${appData.election.name}`, 14, 30);
+
+        const tableData = [];
+        const headers = [['Class', 'Representative', 'Votes Received']];
+
+        Object.keys(appData.classes).sort().forEach(className => {
+            if (appData.election.classStatus[className] === 'counted') {
+                const candidates = appData.election.candidates.filter(c => c.class === className);
+                const votes = appData.election.votes[className];
+                const results = {};
+                candidates.forEach(c => results[c.id] = { ...c, count: 0 });
+                votes.forEach(v => {
+                    if (results[v.candidateId]) results[v.candidateId].count++;
+                });
+                const sorted = Object.values(results).sort((a,b) => b.count - a.count);
+                const winner = sorted[0];
+                const isDraw = sorted.length > 1 && sorted[0].count === sorted[1].count;
+                
+                tableData.push([
+                    className,
+                    isDraw ? 'DRAW' : winner.name,
+                    isDraw ? sorted[0].count : winner.count
+                ]);
+            }
+        });
+
+        doc.autoTable({
+            head: headers,
+            body: tableData,
+            startY: 40
+        });
+
+        doc.save(`Winners_Report_${appData.election.name}.pdf`);
+    };
+
+    const generateDetailedReport = () => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setFontSize(18);
+        doc.text(`${appData.school.name} - Detailed Election Report`, 14, 22);
+        doc.setFontSize(12);
+        doc.text(`Report for: ${appData.election.name}`, 14, 30);
+        let startY = 40;
+
+        Object.keys(appData.classes).sort().forEach(className => {
+            if (appData.election.classStatus[className] === 'counted') {
+                const totalVoters = appData.classes[className].length;
+                const votes = appData.election.votes[className];
+                const totalVotesCast = votes.length;
+                const votePercentage = totalVoters > 0 ? ((totalVotesCast / totalVoters) * 100).toFixed(1) : 0;
+                
+                doc.setFontSize(14);
+                doc.text(`Class: ${className}`, 14, startY);
+                startY += 7;
+                doc.setFontSize(10);
+                doc.text(`Total Students: ${totalVoters} | Votes Cast: ${totalVotesCast} (${votePercentage}%)`, 14, startY);
+                startY += 5;
+
+                const candidates = appData.election.candidates.filter(c => c.class === className);
+                const results = {};
+                candidates.forEach(c => results[c.id] = { ...c, count: 0 });
+                votes.forEach(v => {
+                    if (results[v.candidateId]) results[v.candidateId].count++;
+                });
+                const sorted = Object.values(results).sort((a,b) => b.count - a.count);
+                
+                const tableData = sorted.map(c => [
+                    c.name,
+                    c.count,
+                    totalVotesCast > 0 ? ((c.count / totalVotesCast) * 100).toFixed(1) + '%' : '0%'
+                ]);
+
+                doc.autoTable({
+                    head: [['Candidate', 'Votes', 'Vote Share']],
+                    body: tableData,
+                    startY: startY,
+                    theme: 'grid'
+                });
+                
+                startY = doc.lastAutoTable.finalY + 15;
+            }
+        });
+
+        doc.save(`Detailed_Report_${appData.election.name}.pdf`);
+    };
+
+    // --- INITIAL LOAD ---
+    const initializeApp = async () => {
+        try {
+            const response = await fetch('schools.json');
+            if (!response.ok) {
+                document.body.innerHTML = `<div class="p-8 text-center text-red-600">
+                    <h1 class="text-2xl font-bold">Error: Could not load configuration file.</h1>
+                    <p>Please make sure a valid <strong>schools.json</strong> file is in the same folder as this HTML file.</p>
+                </div>`;
+                throw new Error('Failed to load schools.json');
+            }
+            schoolsData = await response.json();
+            loadState(); // Load the rest of the app state after school data is ready
+        } catch (error) {
+            console.error(error);
+            // Error message is already shown on the screen
+        }
+    };
+
+    initializeApp();
+});
+</script>
+</body>
+</html>
