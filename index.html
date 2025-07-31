@@ -235,6 +235,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const hideModal = () => document.getElementById('modal').classList.add('hidden');
 
+    // --- FULLSCREEN API ---
+    const enterFullScreen = (element) => {
+        if (element.requestFullscreen) {
+            element.requestFullscreen();
+        } else if (element.mozRequestFullScreen) { // Firefox
+            element.mozRequestFullScreen();
+        } else if (element.webkitRequestFullscreen) { // Chrome, Safari and Opera
+            element.webkitRequestFullscreen();
+        } else if (element.msRequestFullscreen) { // IE/Edge
+            element.msRequestFullscreen();
+        }
+    };
+
+    const exitFullScreen = () => {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+        }
+    };
+    
     // --- STEP 1: LOGIN ---
     document.getElementById('login-btn').addEventListener('click', () => {
         const user = document.getElementById('admin-user').value;
@@ -567,6 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         renderVotingScreen();
         showView('voting-screen-view');
+        enterFullScreen(document.documentElement); // Enter fullscreen
     };
 
     const renderVotingScreen = () => {
@@ -620,6 +646,25 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.candidate-card').forEach(c => c.style.pointerEvents = 'none');
     };
 
+    const endVotingSession = () => {
+        exitFullScreen();
+        showModal({
+            title: `End Election for Class ${appData.currentVotingClass}`,
+            body: `Please enter the election security password to confirm.`,
+            requiresInput: true,
+            onConfirm: (password) => {
+                if (password === appData.election.password) {
+                    appData.election.classStatus[appData.currentVotingClass] = 'voted';
+                    saveState();
+                    renderVotingClassSelection();
+                    showView('voting-class-selection-view');
+                } else {
+                    alert('Incorrect password.');
+                }
+            }
+        });
+    };
+
     // Keyboard listener for admin
     document.addEventListener('keydown', (e) => {
         if (document.getElementById('voting-screen-view').classList.contains('active-view')) {
@@ -639,24 +684,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else if (e.key === 'Escape') {
                 e.preventDefault();
-                showModal({
-                    title: `End Election for Class ${appData.currentVotingClass}`,
-                    body: `Please enter the election security password to confirm.`,
-                    requiresInput: true,
-                    onConfirm: (password) => {
-                        if (password === appData.election.password) {
-                            appData.election.classStatus[appData.currentVotingClass] = 'voted';
-                            saveState();
-                            renderVotingClassSelection();
-                            showView('voting-class-selection-view');
-                        } else {
-                            alert('Incorrect password.');
-                        }
-                    }
-                });
+                endVotingSession();
             }
         }
     });
+
+    document.addEventListener('fullscreenchange', () => {
+        // If fullscreen is exited and we are in the voting view, force end the session
+        if (!document.fullscreenElement && document.getElementById('voting-screen-view').classList.contains('active-view')) {
+            endVotingSession();
+        }
+    });
+
 
     // --- STEP 10 & 11: COUNTING PROCESS ---
     const renderCountingClassSelection = () => {
