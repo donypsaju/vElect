@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>V Elect - Offline School Election System</title>
+    <title>Offline School Election System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Library for reading Excel files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -29,6 +29,9 @@
         @keyframes flyToCandidate {
             0% { transform: scale(0.5); opacity: 1; }
             100% { transform: scale(1.5); opacity: 0; }
+        }
+        .progress-bar {
+            transition: width 0.3s ease-in-out;
         }
     </style>
 </head>
@@ -125,6 +128,21 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal for Progress Bar -->
+    <div id="progress-modal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <h3 id="progress-title" class="text-xl font-bold mb-4">Processing Student Data...</h3>
+            <div id="progress-body">
+                <p id="progress-text" class="text-center mb-2">Starting...</p>
+                <div class="w-full bg-gray-200 rounded-full h-4">
+                    <div id="progress-bar" class="bg-blue-600 h-4 rounded-full progress-bar" style="width: 0%"></div>
+                </div>
+                <p id="progress-eta" class="text-center text-sm text-gray-500 mt-2">Calculating time remaining...</p>
+            </div>
+        </div>
+    </div>
+
 
 <script>
 // --- APP INITIALIZATION ---
@@ -270,35 +288,82 @@ document.addEventListener('DOMContentLoaded', () => {
             const worksheet = workbook.Sheets[sheetName];
             const json = XLSX.utils.sheet_to_json(worksheet);
             
-            processStudentData(json);
+            startStudentProcessing(json);
         };
         reader.readAsArrayBuffer(file);
     });
 
-    const processStudentData = (students) => {
-        appData.students = students.map(s => ({...s, class: s.class.toString().trim()}));
+    const startStudentProcessing = (students) => {
+        // Show progress modal
+        document.getElementById('progress-modal').classList.remove('hidden');
+
+        let processedCount = 0;
+        const totalCount = students.length;
+        const startTime = Date.now();
+        const CHUNK_SIZE = 50; // Process 50 students at a time
+
+        // Reset data
+        appData.students = [];
         appData.classes = {};
-        students.forEach(s => {
-            const className = s.class.toString().trim();
-            if (!appData.classes[className]) {
-                appData.classes[className] = [];
+
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const progressEta = document.getElementById('progress-eta');
+
+        function processChunk() {
+            const chunkEnd = Math.min(processedCount + CHUNK_SIZE, totalCount);
+            
+            for (let i = processedCount; i < chunkEnd; i++) {
+                const s = students[i];
+                const studentRecord = {...s, class: s.class.toString().trim()};
+                appData.students.push(studentRecord);
+
+                const className = studentRecord.class;
+                if (!appData.classes[className]) {
+                    appData.classes[className] = [];
+                }
+                appData.classes[className].push(studentRecord);
             }
-            appData.classes[className].push(s);
-        });
-        saveState();
-        renderAdminDashboard();
-        
-        const classList = Object.keys(appData.classes).join(', ');
-        showModal({
-            title: "Student Data Processed",
-            body: `
-                <p><strong>Total Students:</strong> ${appData.students.length}</p>
-                <p><strong>Total Classes:</strong> ${Object.keys(appData.classes).length}</p>
-                <p class="mt-2"><strong>Classes Found:</strong> ${classList}</p>
-            `,
-            confirmText: 'OK'
-        });
+
+            processedCount = chunkEnd;
+            const percentage = (processedCount / totalCount) * 100;
+            
+            // Update UI
+            progressBar.style.width = `${percentage}%`;
+            progressText.textContent = `Processed ${processedCount} of ${totalCount} students...`;
+
+            // Estimate time
+            const elapsedTime = Date.now() - startTime;
+            const timePerStudent = elapsedTime / processedCount;
+            const remainingStudents = totalCount - processedCount;
+            const etaMs = remainingStudents * timePerStudent;
+            const etaSeconds = Math.round(etaMs / 1000);
+            progressEta.textContent = `Estimated time remaining: ${etaSeconds} seconds`;
+
+            if (processedCount < totalCount) {
+                setTimeout(processChunk, 0); // Yield to browser to keep UI responsive
+            } else {
+                // Processing finished
+                document.getElementById('progress-modal').classList.add('hidden');
+                saveState();
+                renderAdminDashboard();
+                
+                const classList = Object.keys(appData.classes).sort().join(', ');
+                showModal({
+                    title: "Student Data Processed Successfully",
+                    body: `
+                        <p><strong>Total Students:</strong> ${appData.students.length}</p>
+                        <p><strong>Total Classes:</strong> ${Object.keys(appData.classes).length}</p>
+                        <p class="mt-2"><strong>Classes Found:</strong> ${classList}</p>
+                    `,
+                    confirmText: 'OK'
+                });
+            }
+        }
+
+        processChunk(); // Start the first chunk
     };
+
 
     // --- STEP 4: CREATE ELECTION ---
     document.getElementById('create-election-btn').addEventListener('click', () => {
