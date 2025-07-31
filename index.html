@@ -277,73 +277,100 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- STEP 3: STUDENT DATA ---
+    // --- STEP 3: STUDENT DATA (Using Web Worker) ---
     document.getElementById('student-file-input').addEventListener('change', (e) => {
         const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const data = new Uint8Array(event.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const sheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[sheetName];
-            const json = XLSX.utils.sheet_to_json(worksheet);
-            
-            startStudentProcessing(json);
-        };
-        reader.readAsArrayBuffer(file);
+        if (file) {
+            startStudentProcessingWithWorker(file);
+        }
     });
 
-    const startStudentProcessing = (students) => {
+    const startStudentProcessingWithWorker = (file) => {
         // Show progress modal
         document.getElementById('progress-modal').classList.remove('hidden');
-
-        let processedCount = 0;
-        const totalCount = students.length;
-        const startTime = Date.now();
-        const CHUNK_SIZE = 50; // Process 50 students at a time
-
-        // Reset data
-        appData.students = [];
-        appData.classes = {};
-
         const progressBar = document.getElementById('progress-bar');
         const progressText = document.getElementById('progress-text');
         const progressEta = document.getElementById('progress-eta');
+        
+        // Reset UI
+        progressBar.style.width = '0%';
+        progressText.textContent = 'Preparing to read file...';
+        progressEta.textContent = 'Calculating time remaining...';
 
-        function processChunk() {
-            const chunkEnd = Math.min(processedCount + CHUNK_SIZE, totalCount);
-            
-            for (let i = processedCount; i < chunkEnd; i++) {
-                const s = students[i];
-                const studentRecord = {...s, class: s.class.toString().trim()};
-                appData.students.push(studentRecord);
+        // Create the worker code as a string
+        const workerCode = `
+            // The xlsx library needs to be available in the worker's scope.
+            // We pass the URL to the main script.
+            self.onmessage = function(e) {
+                const { file, xlsxURL } = e.data;
+                importScripts(xlsxURL);
 
-                const className = studentRecord.class;
-                if (!appData.classes[className]) {
-                    appData.classes[className] = [];
-                }
-                appData.classes[className].push(studentRecord);
-            }
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    try {
+                        const data = new Uint8Array(event.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        const students = XLSX.utils.sheet_to_json(worksheet);
 
-            processedCount = chunkEnd;
-            const percentage = (processedCount / totalCount) * 100;
-            
-            // Update UI
-            progressBar.style.width = `${percentage}%`;
-            progressText.textContent = `Processed ${processedCount} of ${totalCount} students...`;
+                        // Now process the data and send progress updates
+                        const totalCount = students.length;
+                        let processedCount = 0;
+                        const classes = {};
+                        const studentList = [];
 
-            // Estimate time
-            const elapsedTime = Date.now() - startTime;
-            const timePerStudent = elapsedTime / processedCount;
-            const remainingStudents = totalCount - processedCount;
-            const etaMs = remainingStudents * timePerStudent;
-            const etaSeconds = Math.round(etaMs / 1000);
-            progressEta.textContent = `Estimated time remaining: ${etaSeconds} seconds`;
+                        for (const s of students) {
+                            const studentRecord = { ...s, class: s.class.toString().trim() };
+                            studentList.push(studentRecord);
 
-            if (processedCount < totalCount) {
-                setTimeout(processChunk, 0); // Yield to browser to keep UI responsive
-            } else {
-                // Processing finished
+                            const className = studentRecord.class;
+                            if (!classes[className]) {
+                                classes[className] = [];
+                            }
+                            classes[className].push(studentRecord);
+                            
+                            processedCount++;
+                            // Send progress update for every 10 students to avoid flooding the main thread
+                            if (processedCount % 10 === 0 || processedCount === totalCount) {
+                                self.postMessage({ type: 'progress', processed: processedCount, total: totalCount });
+                            }
+                        }
+                        
+                        // Send final result
+                        self.postMessage({ type: 'done', students: studentList, classes: classes });
+
+                    } catch (error) {
+                        self.postMessage({ type: 'error', message: error.message });
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            };
+        `;
+
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        const worker = new Worker(URL.createObjectURL(blob));
+
+        const startTime = Date.now();
+
+        worker.onmessage = (e) => {
+            const { type, processed, total, students, classes, message } = e.data;
+
+            if (type === 'progress') {
+                const percentage = (processed / total) * 100;
+                progressBar.style.width = `${percentage}%`;
+                progressText.textContent = `Processed ${processed} of ${total} students...`;
+
+                const elapsedTime = Date.now() - startTime;
+                const timePerStudent = elapsedTime / processed;
+                const remainingStudents = total - processed;
+                const etaMs = remainingStudents * timePerStudent;
+                const etaSeconds = Math.round(etaMs / 1000);
+                progressEta.textContent = `Estimated time remaining: ${etaSeconds} seconds`;
+            } else if (type === 'done') {
+                appData.students = students;
+                appData.classes = classes;
+
                 document.getElementById('progress-modal').classList.add('hidden');
                 saveState();
                 renderAdminDashboard();
@@ -358,12 +385,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     `,
                     confirmText: 'OK'
                 });
+                worker.terminate();
+            } else if (type === 'error') {
+                alert('An error occurred while processing the file: ' + message);
+                document.getElementById('progress-modal').classList.add('hidden');
+                worker.terminate();
             }
-        }
+        };
 
-        processChunk(); // Start the first chunk
+        worker.postMessage({
+            file: file,
+            xlsxURL: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+        });
     };
-
 
     // --- STEP 4: CREATE ELECTION ---
     document.getElementById('create-election-btn').addEventListener('click', () => {
