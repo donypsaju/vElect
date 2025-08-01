@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>vElect - School Election Portal</title>
+    <title>Offline School Election System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Library for reading Excel files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -40,8 +40,11 @@
     <div id="app-container" class="container mx-auto p-4">
         <!-- Header -->
         <header class="bg-white shadow rounded-lg p-4 mb-6 flex justify-between items-center">
-            <h1 id="header-title" class="text-2xl font-bold text-blue-600">vElect - School Election Portal</h1>
-            <button id="logout-button" class="hidden bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition">Logout</button>
+            <h1 id="header-title" class="text-2xl font-bold text-blue-600">School Election Portal</h1>
+            <div class="flex items-center space-x-4">
+                <button id="instructions-btn" class="hidden bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition">How to Use</button>
+                <button id="logout-button" class="hidden bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition">Logout</button>
+            </div>
         </header>
 
         <!-- Main Content Area -->
@@ -72,6 +75,7 @@
                         <h3 class="text-xl font-bold mb-4">1. Student Data</h3>
                         <p class="text-gray-600 mb-4">Upload the student list (.xlsx). Columns: name, class, gender.</p>
                         <input type="file" id="student-file-input" accept=".xlsx, .xls" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                        <button id="download-sample-btn" class="mt-3 w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 rounded-lg">Download Sample File</button>
                         <div id="student-data-status" class="mt-4 text-green-600 font-semibold"></div>
                     </div>
                     <!-- STEP 4: Create Election -->
@@ -166,6 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const views = document.querySelectorAll('.view');
     const headerTitle = document.getElementById('header-title');
     const logoutButton = document.getElementById('logout-button');
+    const instructionsButton = document.getElementById('instructions-btn');
     const mainContent = document.getElementById('main-content');
 
     // --- UTILITY FUNCTIONS ---
@@ -201,12 +206,15 @@ document.addEventListener('DOMContentLoaded', () => {
             targetView.classList.add('active-view');
             mainContent.appendChild(targetView); // Ensure it's inside main
         }
-        logoutButton.classList.toggle('hidden', !appData.loggedIn || viewId === 'login-view');
+        const isLoggedIn = appData.loggedIn && viewId !== 'login-view';
+        logoutButton.classList.toggle('hidden', !isLoggedIn);
+        instructionsButton.classList.toggle('hidden', !isLoggedIn);
+
         headerTitle.textContent = appData.school ? `${appData.school.name} Election` : 'School Election Portal';
     };
 
     const showModal = (config) => {
-        const { title, body, onConfirm, confirmText = 'Confirm', onCancel, requiresInput = false } = config;
+        const { title, body, onConfirm, confirmText = 'Confirm', onCancel, cancelText = 'Cancel', requiresInput = false } = config;
         document.getElementById('modal-title').textContent = title;
         const modalBody = document.getElementById('modal-body');
         modalBody.innerHTML = body;
@@ -218,12 +226,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const cancelBtn = document.getElementById('modal-cancel-btn');
         
         confirmBtn.textContent = confirmText;
-        confirmBtn.onclick = () => {
-            const input = document.getElementById('modal-password-input');
-            const inputValue = input ? input.value : null;
-            if (onConfirm) onConfirm(inputValue);
-            hideModal();
-        };
+        cancelBtn.textContent = cancelText;
+
+        if (onConfirm) {
+            confirmBtn.classList.remove('hidden');
+            confirmBtn.onclick = () => {
+                const input = document.getElementById('modal-password-input');
+                const inputValue = input ? input.value : null;
+                onConfirm(inputValue);
+                hideModal();
+            };
+        } else {
+            confirmBtn.classList.add('hidden');
+        }
         
         cancelBtn.onclick = () => {
             if (onCancel) onCancel();
@@ -417,7 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p><strong>Total Classes:</strong> ${Object.keys(appData.classes).length}</p>
                         <p class="mt-2"><strong>Classes Found:</strong> ${classList}</p>
                     `,
-                    confirmText: 'OK'
+                    cancelText: 'OK'
                 });
                 worker.terminate();
             } else if (type === 'error') {
@@ -632,7 +647,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Play beep sound
         const synth = new Tone.Synth().toDestination();
-        synth.triggerAttackRelease("C5", "8n");
+        synth.triggerAttackRelease("C5", "4n"); // Changed duration from "8n" to "4n"
 
         // Record vote
         appData.election.votes[appData.currentVotingClass].push({
@@ -883,11 +898,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showModal({
             title: `Results for Class ${className}`,
             body: body,
-            confirmText: 'OK',
-            onConfirm: () => {
-                renderCountingClassSelection();
-                showView('counting-class-selection-view');
-            }
+            cancelText: 'OK'
         });
     };
     
@@ -1003,6 +1014,57 @@ document.addEventListener('DOMContentLoaded', () => {
 
         doc.save(`Detailed_Report_${appData.election.name}.pdf`);
     };
+    
+    // --- INSTRUCTIONS AND SAMPLE DATA ---
+    document.getElementById('instructions-btn').addEventListener('click', () => {
+        const instructionsHTML = `
+            <div class="text-left text-sm space-y-3">
+                <p>Follow these steps to conduct a successful election:</p>
+                <ol class="list-decimal list-inside space-y-2">
+                    <li><strong>Setup School:</strong> After logging in, enter your official school code to load the school name.</li>
+                    <li><strong>Upload Student Data:</strong>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Click "Download Sample File" to get a template.</li>
+                            <li>Fill the Excel file with your student data. The headers must be <strong>name, class, gender</strong>.</li>
+                            <li>Click "Choose File" and select your completed Excel file. A progress bar will show the import status.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Create Election:</strong> Give your election a name (e.g., "Class Representatives 2025") and a secure password. This password is vital for controlling the election flow.</li>
+                    <li><strong>Add Candidates:</strong> For each candidate, select their class, name, and upload a square photo (e.g., 500x500 pixels) for the best appearance.</li>
+                    <li><strong>Start Voting:</strong>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Go to "Start Voting" and select a class.</li>
+                            <li>Enter the election password. The screen will go into fullscreen mode.</li>
+                            <li>The voter uses the mouse to click on their chosen candidate. A beep will confirm the vote.</li>
+                            <li>The admin (you) presses the <strong>TAB</strong> key to advance to the next voter.</li>
+                            <li>After the last student has voted, the admin presses the <strong>ESC</strong> key and enters the password to end the session for that class.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Start Counting:</strong> Once voting is complete for a class, go to "Start Counting", select the class, and enter the password. Watch the animated vote count.</li>
+                    <li><strong>View Reports:</strong> After all classes are counted, go to "View Reports" to generate and download detailed PDF reports of the election results.</li>
+                </ol>
+                <p class="font-bold mt-4">Important: All data is saved in your browser's local storage. It is not sent online. Clearing your browser's cache may erase the data.</p>
+            </div>
+        `;
+        showModal({
+            title: 'How to Use the Election System',
+            body: instructionsHTML,
+            cancelText: 'Close'
+        });
+    });
+
+    document.getElementById('download-sample-btn').addEventListener('click', () => {
+        const sampleData = [
+            { name: "John Doe", class: "10 A", gender: "Male" },
+            { name: "Jane Smith", class: "10 A", gender: "Female" },
+            { name: "Peter Jones", class: "9 B", gender: "Male" }
+        ];
+        const worksheet = XLSX.utils.json_to_sheet(sampleData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
+        XLSX.writeFile(workbook, "student_data_sample.xlsx");
+    });
+
 
     // --- INITIAL LOAD ---
     const initializeApp = async () => {
