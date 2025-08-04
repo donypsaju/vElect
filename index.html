@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>vElect - School Election Portal</title>
+    <title>Offline School Election System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Library for reading Excel files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -19,7 +19,8 @@
         .active-view { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background-color: white; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); width: 90%; max-width: 500px; }
+        .modal-content { background-color: white; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); width: 90%; max-width: 500px; display: flex; flex-direction: column; max-height: 90vh; }
+        .modal-body { overflow-y: auto; }
         .counting-vote {
             animation: flyToCandidate 1s ease-in-out;
             position: absolute;
@@ -33,6 +34,10 @@
         .progress-bar {
             transition: width 0.3s ease-in-out;
         }
+        .disabled-card {
+            opacity: 0.5;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900">
@@ -40,8 +45,8 @@
     <div id="app-container" class="container mx-auto p-4">
         <!-- Header -->
         <header class="bg-white shadow rounded-lg p-4 mb-6 flex justify-between items-center">
-            <h1 id="header-title" class="text-2xl font-bold text-blue-600">vElect - School Election Portal</h1>
-            <div class="flex items-center space-x-4">
+            <h1 id="header-title" class="text-2xl font-bold text-blue-600">School Election Portal</h1>
+            <div id="header-buttons" class="flex items-center space-x-4">
                 <button id="instructions-btn" class="hidden bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition">How to Use</button>
                 <button id="logout-button" class="hidden bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition">Logout</button>
             </div>
@@ -70,7 +75,7 @@
             <div id="admin-dashboard-view" class="view">
                 <h2 class="text-3xl font-bold mb-6" id="dashboard-school-name"></h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <!-- STEP 3: Upload Students -->
+                    <!-- Student Data -->
                     <div class="bg-white p-6 rounded-xl shadow-md">
                         <h3 class="text-xl font-bold mb-4">1. Student Data</h3>
                         <p class="text-gray-600 mb-4">Upload the student list (.xlsx). Columns: name, class, gender.</p>
@@ -78,34 +83,62 @@
                         <button id="download-sample-btn" class="mt-3 w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 rounded-lg">Download Sample File</button>
                         <div id="student-data-status" class="mt-4 text-green-600 font-semibold"></div>
                     </div>
-                    <!-- STEP 4: Create Election -->
+                    <!-- Create/Update Election -->
                     <div class="bg-white p-6 rounded-xl shadow-md">
-                        <h3 class="text-xl font-bold mb-4">2. Create Election</h3>
+                        <h3 id="election-form-title" class="text-xl font-bold mb-4">2. Create Election</h3>
                         <input id="election-name" type="text" placeholder="Election Name" class="w-full p-2 mb-3 border rounded">
-                        <input id="election-password" type="password" placeholder="Security Password" class="w-full p-2 mb-3 border rounded">
-                        <button id="create-election-btn" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 rounded-lg">Create</button>
-                        <div id="election-status" class="mt-4 text-green-600 font-semibold"></div>
+                        <div class="relative">
+                            <input id="election-password" type="password" placeholder="Security Password" class="w-full p-2 mb-3 border rounded pr-10">
+                            <span id="toggle-password" class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-400 hover:text-gray-600">
+                                <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" /></svg>
+                                <svg id="eye-off-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2 2 0 01-2.828 2.828l-1.515-1.514a4 4 0 00-1.423-.93L3.086 3.086A9.948 9.948 0 0110 3a9.958 9.958 0 014.512 1.074l-1.78 1.781a4 4 0 00-4.95 4.95z" clip-rule="evenodd" /><path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.022 7 9.542 7 .847 0 1.669-.105 2.454-.303z" /></svg>
+                            </span>
+                        </div>
+                        <div class="flex items-center mb-3">
+                            <input id="include-nota" type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                            <label for="include-nota" class="ml-2 block text-sm text-gray-900">Include NOTA</label>
+                        </div>
+                        <div id="election-form-buttons" class="space-y-2">
+                           <button id="create-election-btn" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 rounded-lg">Create</button>
+                        </div>
                     </div>
-                    <!-- STEP 5: Add Candidates -->
+                     <!-- Manage Elections -->
+                    <div class="bg-white p-6 rounded-xl shadow-md md:col-span-2 lg:col-span-3">
+                        <h3 class="text-xl font-bold mb-4">Manage Elections</h3>
+                        <div id="election-list" class="space-y-2"></div>
+                    </div>
+                </div>
+
+                <div id="active-election-section" class="mt-8 space-y-6 hidden">
+                    <h2 class="text-2xl font-bold border-b pb-2">Active Election: <span id="active-election-name" class="text-blue-600"></span></h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Add Candidates -->
+                        <div class="bg-white p-6 rounded-xl shadow-md">
+                            <h3 class="text-xl font-bold mb-4">3. Add Candidates</h3>
+                            <select id="candidate-class-select" class="w-full p-2 mb-3 border rounded"></select>
+                            <select id="candidate-name-select" class="w-full p-2 mb-3 border rounded"></select>
+                            <input id="candidate-gender" type="text" placeholder="Gender (auto-filled)" class="w-full p-2 mb-3 border rounded bg-gray-100" readonly>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Candidate Image</label>
+                            <input type="file" id="candidate-image-input" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                            <button id="add-candidate-btn" class="w-full mt-3 bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 rounded-lg">Add Candidate</button>
+                        </div>
+                        <!-- Manage Candidates -->
+                        <div class="bg-white p-6 rounded-xl shadow-md">
+                            <h3 class="text-xl font-bold mb-4">Manage Candidates</h3>
+                            <div id="candidate-list" class="space-y-3 max-h-64 overflow-y-auto"></div>
+                        </div>
+                    </div>
+                    <!-- Navigation to other sections -->
                     <div class="bg-white p-6 rounded-xl shadow-md">
-                        <h3 class="text-xl font-bold mb-4">3. Add Candidates</h3>
-                        <select id="candidate-class-select" class="w-full p-2 mb-3 border rounded"></select>
-                        <select id="candidate-name-select" class="w-full p-2 mb-3 border rounded"></select>
-                        <input id="candidate-gender" type="text" placeholder="Gender (auto-filled)" class="w-full p-2 mb-3 border rounded bg-gray-100" readonly>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Candidate Image</label>
-                        <input type="file" id="candidate-image-input" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
-                        <button id="add-candidate-btn" class="w-full mt-3 bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 rounded-lg">Add Candidate</button>
+                        <h3 class="text-xl font-bold mb-4">4. Election Process</h3>
+                        <div class="flex space-x-4">
+                            <button id="goto-voting-btn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg">Start Voting</button>
+                            <button id="goto-counting-btn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg">Start Counting</button>
+                            <button id="goto-reports-btn" class="flex-1 bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 rounded-lg">View Reports</button>
+                        </div>
                     </div>
                 </div>
-                <!-- Navigation to other sections -->
-                <div class="mt-8 bg-white p-6 rounded-xl shadow-md">
-                    <h3 class="text-xl font-bold mb-4">4. Election Process</h3>
-                    <div class="flex space-x-4">
-                        <button id="goto-voting-btn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg">Start Voting</button>
-                        <button id="goto-counting-btn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg">Start Counting</button>
-                        <button id="goto-reports-btn" class="flex-1 bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 rounded-lg">View Reports</button>
-                    </div>
-                </div>
+
             </div>
             
             <!-- STEP 6 & 7: Voting View -->
@@ -125,7 +158,7 @@
     <div id="modal" class="modal-backdrop hidden">
         <div id="modal-content" class="modal-content">
             <h3 id="modal-title" class="text-xl font-bold mb-4"></h3>
-            <div id="modal-body"></div>
+            <div id="modal-body" class="modal-body"></div>
             <div id="modal-footer" class="mt-6 flex justify-end space-x-4">
                 <button id="modal-cancel-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancel</button>
                 <button id="modal-confirm-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Confirm</button>
@@ -157,7 +190,8 @@ document.addEventListener('DOMContentLoaded', () => {
         school: null,
         students: [],
         classes: {},
-        election: null,
+        elections: [],
+        activeElectionId: null,
         currentVotingClass: null,
         currentVoterIndex: 0,
         loggedIn: false,
@@ -169,6 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- DOM ELEMENTS ---
     const views = document.querySelectorAll('.view');
     const headerTitle = document.getElementById('header-title');
+    const headerButtons = document.getElementById('header-buttons');
     const logoutButton = document.getElementById('logout-button');
     const instructionsButton = document.getElementById('instructions-btn');
     const mainContent = document.getElementById('main-content');
@@ -179,7 +214,6 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('electionAppData', JSON.stringify(appData));
         } catch (e) {
             console.error("Error saving state:", e);
-            // Handle potential storage errors, e.g., if image data is too large
             alert("Could not save state. The browser storage might be full.");
         }
     };
@@ -188,6 +222,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedData = localStorage.getItem('electionAppData');
         if (savedData) {
             appData = JSON.parse(savedData);
+            // FIX: Ensure appData.elections is an array, handling old localStorage data
+            if (!Array.isArray(appData.elections)) {
+                appData.elections = [];
+            }
             if (appData.loggedIn) {
                 if(appData.school) {
                     showView('admin-dashboard-view');
@@ -204,12 +242,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetView = document.getElementById(viewId);
         if (targetView) {
             targetView.classList.add('active-view');
-            mainContent.appendChild(targetView); // Ensure it's inside main
+            mainContent.appendChild(targetView);
         }
         const isLoggedIn = appData.loggedIn && viewId !== 'login-view';
         logoutButton.classList.toggle('hidden', !isLoggedIn);
         instructionsButton.classList.toggle('hidden', !isLoggedIn);
-
+        
+        headerButtons.classList.toggle('hidden', viewId === 'voting-screen-view');
         headerTitle.textContent = appData.school ? `${appData.school.name} Election` : 'School Election Portal';
     };
 
@@ -250,29 +289,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const hideModal = () => document.getElementById('modal').classList.add('hidden');
 
+    const getActiveElection = () => appData.elections.find(e => e.id === appData.activeElectionId);
+
     // --- FULLSCREEN API ---
     const enterFullScreen = (element) => {
-        if (element.requestFullscreen) {
-            element.requestFullscreen();
-        } else if (element.mozRequestFullScreen) { // Firefox
-            element.mozRequestFullScreen();
-        } else if (element.webkitRequestFullscreen) { // Chrome, Safari and Opera
-            element.webkitRequestFullscreen();
-        } else if (element.msRequestFullscreen) { // IE/Edge
-            element.msRequestFullscreen();
-        }
+        if (element.requestFullscreen) element.requestFullscreen();
+        else if (element.mozRequestFullScreen) element.mozRequestFullScreen();
+        else if (element.webkitRequestFullscreen) element.webkitRequestFullscreen();
+        else if (element.msRequestFullscreen) element.msRequestFullscreen();
     };
 
     const exitFullScreen = () => {
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-        } else if (document.mozCancelFullScreen) {
-            document.mozCancelFullScreen();
-        } else if (document.webkitExitFullscreen) {
-            document.webkitExitFullscreen();
-        } else if (document.msExitFullscreen) {
-            document.msExitFullscreen();
-        }
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        else if (document.msExitFullscreen) document.msExitFullscreen();
     };
     
     // --- STEP 1: LOGIN ---
@@ -296,18 +327,16 @@ document.addEventListener('DOMContentLoaded', () => {
     logoutButton.addEventListener('click', () => {
         appData.loggedIn = false;
         showView('login-view');
-        localStorage.removeItem('electionAppData'); // Or just reset the loggedIn flag
+        localStorage.removeItem('electionAppData');
         window.location.reload();
     });
 
     // --- STEP 2: SCHOOL SETUP ---
     document.getElementById('confirm-school-btn').addEventListener('click', () => {
         const code = document.getElementById('school-code-input').value.trim();
-        // Find school in the data loaded from schools.json
         const schoolInfo = schoolsData.find(school => school["School Code"] === code);
         
         if (schoolInfo) {
-            // Use the "School Name" property from the matched object
             appData.school = { code, name: schoolInfo["School Name"] };
             saveState();
             showView('admin-dashboard-view');
@@ -320,29 +349,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- STEP 3: STUDENT DATA (Using Web Worker) ---
     document.getElementById('student-file-input').addEventListener('change', (e) => {
         const file = e.target.files[0];
-        if (file) {
-            startStudentProcessingWithWorker(file);
-        }
+        if (file) startStudentProcessingWithWorker(file);
     });
 
     const startStudentProcessingWithWorker = (file) => {
-        // Show progress modal
         document.getElementById('progress-modal').classList.remove('hidden');
         const progressBar = document.getElementById('progress-bar');
         const progressText = document.getElementById('progress-text');
         const progressEta = document.getElementById('progress-eta');
         
-        // Reset UI
         progressBar.style.width = '0%';
         progressText.textContent = 'Preparing to read file...';
         progressEta.textContent = 'Calculating time remaining...';
 
-        // Create the worker code as a string
         const workerCode = `
             self.onmessage = function(e) {
                 const { file, xlsxURL } = e.data;
                 importScripts(xlsxURL);
-
                 const reader = new FileReader();
                 reader.onload = function(event) {
                     try {
@@ -352,7 +375,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         const worksheet = workbook.Sheets[sheetName];
                         const rawStudents = XLSX.utils.sheet_to_json(worksheet);
 
-                        // Normalize headers and filter out invalid rows
                         const students = rawStudents.map(row => {
                             const normalizedRow = {};
                             for (const key in row) {
@@ -361,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
                             }
                             return normalizedRow;
-                        }).filter(row => row.class && row.name); // Ensure essential fields exist
+                        }).filter(row => row.class && row.name);
 
                         const totalCount = students.length;
                         let processedCount = 0;
@@ -369,24 +391,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         const studentList = [];
 
                         for (const s of students) {
-                            // The 'class' property is now guaranteed to exist here
                             const studentRecord = { ...s, class: s.class.toString().trim() };
                             studentList.push(studentRecord);
-
                             const className = studentRecord.class;
-                            if (!classes[className]) {
-                                classes[className] = [];
-                            }
+                            if (!classes[className]) classes[className] = [];
                             classes[className].push(studentRecord);
-                            
                             processedCount++;
                             if (processedCount % 10 === 0 || processedCount === totalCount) {
                                 self.postMessage({ type: 'progress', processed: processedCount, total: totalCount });
                             }
                         }
-                        
                         self.postMessage({ type: 'done', students: studentList, classes: classes });
-
                     } catch (error) {
                         self.postMessage({ type: 'error', message: error.message });
                     }
@@ -397,17 +412,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const blob = new Blob([workerCode], { type: 'application/javascript' });
         const worker = new Worker(URL.createObjectURL(blob));
-
         const startTime = Date.now();
 
         worker.onmessage = (e) => {
             const { type, processed, total, students, classes, message } = e.data;
-
             if (type === 'progress') {
                 const percentage = total > 0 ? (processed / total) * 100 : 0;
                 progressBar.style.width = `${percentage}%`;
                 progressText.textContent = `Processed ${processed} of ${total} students...`;
-
                 if (processed > 0) {
                     const elapsedTime = Date.now() - startTime;
                     const timePerStudent = elapsedTime / processed;
@@ -419,19 +431,13 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (type === 'done') {
                 appData.students = students;
                 appData.classes = classes;
-
                 document.getElementById('progress-modal').classList.add('hidden');
                 saveState();
                 renderAdminDashboard();
-                
                 const classList = Object.keys(appData.classes).sort().join(', ');
                 showModal({
                     title: "Student Data Processed Successfully",
-                    body: `
-                        <p><strong>Total Students:</strong> ${appData.students.length}</p>
-                        <p><strong>Total Classes:</strong> ${Object.keys(appData.classes).length}</p>
-                        <p class="mt-2"><strong>Classes Found:</strong> ${classList}</p>
-                    `,
+                    body: `<p><strong>Total Students:</strong> ${appData.students.length}</p><p><strong>Total Classes:</strong> ${Object.keys(appData.classes).length}</p><p class="mt-2"><strong>Classes Found:</strong> ${classList}</p>`,
                     cancelText: 'OK'
                 });
                 worker.terminate();
@@ -441,34 +447,109 @@ document.addEventListener('DOMContentLoaded', () => {
                 worker.terminate();
             }
         };
-
-        worker.postMessage({
-            file: file,
-            xlsxURL: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
-        });
+        worker.postMessage({ file: file, xlsxURL: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js' });
     };
 
-    // --- STEP 4: CREATE ELECTION ---
-    document.getElementById('create-election-btn').addEventListener('click', () => {
+    // --- STEP 4: ELECTION MANAGEMENT ---
+    const renderElectionForm = (election = null) => {
+        const isEditing = !!election;
+        document.getElementById('election-form-title').textContent = isEditing ? 'Update Election' : '2. Create Election';
+        document.getElementById('election-name').value = isEditing ? election.name : '';
+        document.getElementById('election-password').value = isEditing ? election.password : '';
+        document.getElementById('include-nota').checked = isEditing ? election.includeNota : false;
+
+        const buttonsContainer = document.getElementById('election-form-buttons');
+        if (isEditing) {
+            buttonsContainer.innerHTML = `
+                <button id="update-election-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-lg">Update</button>
+                <button id="cancel-update-btn" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 rounded-lg">Cancel</button>
+            `;
+            document.getElementById('update-election-btn').onclick = () => updateElection(election.id);
+            document.getElementById('cancel-update-btn').onclick = () => renderElectionForm();
+        } else {
+            buttonsContainer.innerHTML = `<button id="create-election-btn" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 rounded-lg">Create</button>`;
+            document.getElementById('create-election-btn').onclick = createElection;
+        }
+    };
+
+    const createElection = () => {
         const name = document.getElementById('election-name').value;
         const password = document.getElementById('election-password').value;
+        const includeNota = document.getElementById('include-nota').checked;
         if (name && password) {
-            appData.election = {
+            appData.elections.push({
                 id: Date.now(),
                 name,
                 password,
+                includeNota,
                 candidates: [],
-                votes: {}, // votes will be stored by class, e.g., { "10A": [...] }
-                classStatus: {} // e.g., { "10A": "completed" }
-            };
+                votes: {},
+                classStatus: {}
+            });
             saveState();
             renderAdminDashboard();
+            renderElectionForm(); // Reset form
         } else {
             alert('Please provide both an election name and a password.');
         }
+    };
+
+    const updateElection = (electionId) => {
+        const election = appData.elections.find(e => e.id === electionId);
+        if (election) {
+            election.name = document.getElementById('election-name').value;
+            election.password = document.getElementById('election-password').value;
+            election.includeNota = document.getElementById('include-nota').checked;
+            saveState();
+            renderAdminDashboard();
+            renderElectionForm();
+        }
+    };
+
+    const deleteElection = (electionId) => {
+        const election = appData.elections.find(e => e.id === electionId);
+        const isVotingStarted = Object.values(election.classStatus).some(s => s.status === 'voted' || s.status === 'counted');
+        if (isVotingStarted) {
+            alert('Cannot delete an election after voting has started.');
+            return;
+        }
+        showModal({
+            title: 'Delete Election?',
+            body: `Are you sure you want to delete the election "${election.name}"? This action cannot be undone.`,
+            confirmText: 'Delete',
+            onConfirm: () => {
+                appData.elections = appData.elections.filter(e => e.id !== electionId);
+                if (appData.activeElectionId === electionId) {
+                    appData.activeElectionId = null;
+                }
+                saveState();
+                renderAdminDashboard();
+            }
+        });
+    };
+
+    const selectElection = (electionId) => {
+        appData.activeElectionId = electionId;
+        saveState();
+        renderAdminDashboard();
+    };
+
+    document.getElementById('toggle-password').addEventListener('click', () => {
+        const passwordInput = document.getElementById('election-password');
+        const eyeIcon = document.getElementById('eye-icon');
+        const eyeOffIcon = document.getElementById('eye-off-icon');
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            eyeIcon.classList.add('hidden');
+            eyeOffIcon.classList.remove('hidden');
+        } else {
+            passwordInput.type = 'password';
+            eyeIcon.classList.remove('hidden');
+            eyeOffIcon.classList.add('hidden');
+        }
     });
 
-    // --- STEP 5: ADD CANDIDATES ---
+    // --- STEP 5: CANDIDATE MANAGEMENT ---
     const populateClassSelect = () => {
         const select = document.getElementById('candidate-class-select');
         select.innerHTML = '<option>Select a class</option>';
@@ -482,7 +563,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const nameSelect = document.getElementById('candidate-name-select');
         nameSelect.innerHTML = '<option>Select a student</option>';
         if (appData.classes[className]) {
-            appData.classes[className].forEach(student => {
+            const sortedStudents = [...appData.classes[className]].sort((a, b) => {
+                const aGender = a.gender?.toLowerCase() || 'z';
+                const bGender = b.gender?.toLowerCase() || 'z';
+                if (aGender.startsWith('f') && !bGender.startsWith('f')) return -1;
+                if (!aGender.startsWith('f') && bGender.startsWith('f')) return 1;
+                return a.name.localeCompare(b.name);
+            });
+            sortedStudents.forEach(student => {
                 nameSelect.innerHTML += `<option value="${student.name}">${student.name}</option>`;
             });
         }
@@ -496,12 +584,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('add-candidate-btn').addEventListener('click', () => {
+        const election = getActiveElection();
         const className = document.getElementById('candidate-class-select').value;
         const name = document.getElementById('candidate-name-select').value;
         const gender = document.getElementById('candidate-gender').value;
         const imageFile = document.getElementById('candidate-image-input').files[0];
 
-        if (!appData.election) { alert("Create an election first."); return; }
+        if (!election) { alert("Select an active election first."); return; }
         if (className === 'Select a class' || name === 'Select a student' || !imageFile) {
             alert("Please fill all candidate details, including an image.");
             return;
@@ -509,17 +598,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const reader = new FileReader();
         reader.onload = (e) => {
-            const newCandidate = {
-                id: Date.now(),
-                name,
-                class: className,
-                gender,
-                image: e.target.result // Base64 string
-            };
-            appData.election.candidates.push(newCandidate);
+            election.candidates.push({ id: Date.now(), name, class: className, gender, image: e.target.result });
             saveState();
             alert(`Candidate ${name} added successfully.`);
-            // Reset fields
+            renderCandidateList();
             document.getElementById('candidate-class-select').value = 'Select a class';
             document.getElementById('candidate-name-select').innerHTML = '<option>Select a student</option>';
             document.getElementById('candidate-gender').value = '';
@@ -528,6 +610,28 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.readAsDataURL(imageFile);
     });
 
+    const deleteCandidate = (candidateId) => {
+        const election = getActiveElection();
+        const candidate = election.candidates.find(c => c.id === candidateId);
+        const classStatus = election.classStatus[candidate.class]?.status;
+
+        if (classStatus === 'voted' || classStatus === 'counted') {
+            alert(`Cannot delete candidate from Class ${candidate.class} as voting has already started or completed.`);
+            return;
+        }
+
+        showModal({
+            title: 'Delete Candidate?',
+            body: `Are you sure you want to delete candidate "${candidate.name}"?`,
+            confirmText: 'Delete',
+            onConfirm: () => {
+                election.candidates = election.candidates.filter(c => c.id !== candidateId);
+                saveState();
+                renderCandidateList();
+            }
+        });
+    };
+
     // --- RENDER FUNCTIONS ---
     const renderAdminDashboard = () => {
         document.getElementById('dashboard-school-name').textContent = `Dashboard: ${appData.school.name}`;
@@ -535,36 +639,97 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('student-data-status').textContent = `${appData.students.length} students loaded.`;
             populateClassSelect();
         }
-        if (appData.election) {
-            document.getElementById('election-status').textContent = `Active: ${appData.election.name}`;
+        renderElectionList();
+        const activeElection = getActiveElection();
+        const activeSection = document.getElementById('active-election-section');
+        if (activeElection) {
+            activeSection.classList.remove('hidden');
+            document.getElementById('active-election-name').textContent = activeElection.name;
+            renderCandidateList();
+        } else {
+            activeSection.classList.add('hidden');
         }
+    };
+
+    const renderElectionList = () => {
+        const listContainer = document.getElementById('election-list');
+        if (appData.elections.length === 0) {
+            listContainer.innerHTML = '<p class="text-gray-500">No elections created yet.</p>';
+            return;
+        }
+        listContainer.innerHTML = appData.elections.map(election => `
+            <div class="flex items-center justify-between p-3 rounded-lg ${appData.activeElectionId === election.id ? 'bg-blue-100 border border-blue-400' : 'bg-gray-100'}">
+                <span class="font-semibold">${election.name}</span>
+                <div class="space-x-2">
+                    <button class="select-election-btn text-sm py-1 px-3 rounded ${appData.activeElectionId === election.id ? 'bg-gray-500 text-white cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white'}" data-id="${election.id}" ${appData.activeElectionId === election.id ? 'disabled' : ''}>${appData.activeElectionId === election.id ? 'Selected' : 'Select'}</button>
+                    <button class="edit-election-btn text-sm py-1 px-3 rounded bg-yellow-500 hover:bg-yellow-600 text-white" data-id="${election.id}">Edit</button>
+                    <button class="delete-election-btn text-sm py-1 px-3 rounded bg-red-500 hover:bg-red-600 text-white" data-id="${election.id}">Delete</button>
+                </div>
+            </div>
+        `).join('');
+
+        listContainer.querySelectorAll('.select-election-btn').forEach(b => b.onclick = (e) => selectElection(Number(e.target.dataset.id)));
+        listContainer.querySelectorAll('.edit-election-btn').forEach(b => b.onclick = (e) => renderElectionForm(appData.elections.find(el => el.id === Number(e.target.dataset.id))));
+        listContainer.querySelectorAll('.delete-election-btn').forEach(b => b.onclick = (e) => deleteElection(Number(e.target.dataset.id)));
+    };
+
+    const renderCandidateList = () => {
+        const election = getActiveElection();
+        const listContainer = document.getElementById('candidate-list');
+        if (!election || election.candidates.length === 0) {
+            listContainer.innerHTML = '<p class="text-gray-500">No candidates added to this election yet.</p>';
+            return;
+        }
+
+        const candidatesByClass = election.candidates.reduce((acc, c) => {
+            if (!acc[c.class]) acc[c.class] = [];
+            acc[c.class].push(c);
+            return acc;
+        }, {});
+
+        listContainer.innerHTML = Object.keys(candidatesByClass).sort().map(className => `
+            <div>
+                <h4 class="font-bold text-gray-700">${className}</h4>
+                <ul class="list-disc list-inside ml-4">
+                    ${candidatesByClass[className].map(c => `
+                        <li class="flex justify-between items-center">
+                            <span>${c.name}</span>
+                            <button class="delete-candidate-btn text-xs text-red-500 hover:text-red-700" data-id="${c.id}">Delete</button>
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+        `).join('');
+
+        listContainer.querySelectorAll('.delete-candidate-btn').forEach(b => b.onclick = (e) => deleteCandidate(Number(e.target.dataset.id)));
     };
     
     // --- NAVIGATION ---
     document.getElementById('goto-voting-btn').addEventListener('click', () => {
-        if (!appData.election) { alert("Create an election first."); return; }
+        if (!getActiveElection()) { alert("Select an active election first."); return; }
         renderVotingClassSelection();
         showView('voting-class-selection-view');
     });
     document.getElementById('goto-counting-btn').addEventListener('click', () => {
-        if (!appData.election) { alert("Create an election first."); return; }
+        if (!getActiveElection()) { alert("Select an active election first."); return; }
         renderCountingClassSelection();
         showView('counting-class-selection-view');
     });
     document.getElementById('goto-reports-btn').addEventListener('click', () => {
-        if (!appData.election) { alert("Create an election first."); return; }
+        if (!getActiveElection()) { alert("Select an active election first."); return; }
         renderReportsView();
         showView('reports-view');
     });
 
     // --- STEP 6 & 7: VOTING PROCESS ---
     const renderVotingClassSelection = () => {
+        const election = getActiveElection();
         const container = document.getElementById('voting-class-selection-view');
         container.innerHTML = `<h2 class="text-3xl font-bold mb-6">Start Voting for a Class</h2>
             <button id="back-to-dash-1" class="mb-4 bg-gray-500 text-white p-2 rounded">Back to Dashboard</button>
             <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 ${Object.keys(appData.classes).sort().map(className => {
-                    const status = appData.election.classStatus[className]?.status;
+                    const status = election.classStatus[className]?.status;
                     const isCompleted = status === 'voted' || status === 'counted';
                     return `
                         <button 
@@ -588,7 +753,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: `Please enter the election security password.`,
                     requiresInput: true,
                     onConfirm: (password) => {
-                        if (password === appData.election.password) {
+                        if (password === election.password) {
                             startVotingForClass(className);
                         } else {
                             alert('Incorrect password.');
@@ -602,8 +767,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const startVotingForClass = (className) => {
         appData.currentVotingClass = className;
         appData.currentVoterIndex = 0;
-        if (!appData.election.votes[className]) {
-            appData.election.votes[className] = [];
+        const election = getActiveElection();
+        if (!election.votes[className]) {
+            election.votes[className] = [];
         }
         renderVotingScreen();
         showView('voting-screen-view');
@@ -611,10 +777,25 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderVotingScreen = () => {
+        const election = getActiveElection();
         const container = document.getElementById('voting-screen-view');
         const className = appData.currentVotingClass;
         const totalVoters = appData.classes[className].length;
-        const candidates = appData.election.candidates.filter(c => c.class === className);
+        let candidates = election.candidates.filter(c => c.class === className);
+
+        let notaCardHTML = '';
+        if (election.includeNota) {
+            notaCardHTML = `
+                <div class="candidate-card bg-gray-200 rounded-2xl shadow-lg p-6 text-center cursor-pointer transition-transform transform hover:scale-105" data-candidate-id="NOTA">
+                    <div class="w-48 h-48 mx-auto rounded-full bg-gray-300 flex items-center justify-center border-4 border-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                    </div>
+                    <h3 class="mt-4 text-2xl font-bold">NOTA</h3>
+                </div>
+            `;
+        }
 
         container.innerHTML = `
             <div class="text-center">
@@ -629,6 +810,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h3 class="mt-4 text-2xl font-bold">${c.name}</h3>
                     </div>
                 `).join('')}
+                ${notaCardHTML}
             </div>
             <div id="vote-cast-overlay" class="hidden fixed inset-0 bg-black bg-opacity-75 flex flex-col justify-center items-center text-white z-50">
                 <h2 class="text-5xl font-bold">Vote Cast!</h2>
@@ -644,32 +826,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleVoteCast = (e) => {
         const card = e.currentTarget;
         const candidateId = card.dataset.candidateId;
+        const election = getActiveElection();
 
-        // Play beep sound
         const synth = new Tone.Synth().toDestination();
-        synth.triggerAttackRelease("C5", "4n"); // Changed duration from "8n" to "4n"
+        synth.triggerAttackRelease("C5", "4n");
 
-        // Record vote
-        appData.election.votes[appData.currentVotingClass].push({
+        election.votes[appData.currentVotingClass].push({
             voterIndex: appData.currentVoterIndex,
             candidateId: candidateId
         });
         saveState();
 
-        // Show overlay and disable further clicks
         document.getElementById('vote-cast-overlay').classList.remove('hidden');
         document.querySelectorAll('.candidate-card').forEach(c => c.style.pointerEvents = 'none');
     };
 
     const endVotingSession = () => {
+        const election = getActiveElection();
         exitFullScreen();
         showModal({
             title: `End Election for Class ${appData.currentVotingClass}`,
             body: `Please enter the election security password to confirm.`,
             requiresInput: true,
             onConfirm: (password) => {
-                if (password === appData.election.password) {
-                    appData.election.classStatus[appData.currentVotingClass] = { status: 'voted' };
+                if (password === election.password) {
+                    election.classStatus[appData.currentVotingClass] = { status: 'voted' };
                     saveState();
                     renderVotingClassSelection();
                     showView('voting-class-selection-view');
@@ -683,14 +864,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Keyboard listener for admin
     document.addEventListener('keydown', (e) => {
         if (document.getElementById('voting-screen-view').classList.contains('active-view')) {
+            const election = getActiveElection();
             if (e.key === 'Tab') {
                 e.preventDefault();
-                // Check if a vote was cast for the current voter
-                if (appData.election.votes[appData.currentVotingClass].length > appData.currentVoterIndex) {
+                if (election.votes[appData.currentVotingClass].length > appData.currentVoterIndex) {
                     appData.currentVoterIndex++;
                     const totalVoters = appData.classes[appData.currentVotingClass].length;
                     if (appData.currentVoterIndex < totalVoters) {
-                        renderVotingScreen(); // Reset for next voter
+                        renderVotingScreen();
                     } else {
                         document.getElementById('voter-counter').innerHTML = '<span class="text-green-600 font-bold">All students have voted! Press ESC to finish.</span>';
                     }
@@ -705,7 +886,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.addEventListener('fullscreenchange', () => {
-        // If fullscreen is exited and we are in the voting view, force end the session
         if (!document.fullscreenElement && document.getElementById('voting-screen-view').classList.contains('active-view')) {
             endVotingSession();
         }
@@ -714,8 +894,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- STEP 10 & 11: COUNTING PROCESS ---
     const renderCountingClassSelection = () => {
+        const election = getActiveElection();
         const container = document.getElementById('counting-class-selection-view');
-        const allVoted = Object.keys(appData.classes).every(c => appData.election.classStatus[c]?.status === 'voted' || appData.election.classStatus[c]?.status === 'counted');
+        const allVoted = Object.keys(appData.classes).every(c => election.classStatus[c]?.status === 'voted' || election.classStatus[c]?.status === 'counted');
         
         container.innerHTML = `
             <h2 class="text-3xl font-bold mb-6">Start Counting for a Class</h2>
@@ -723,7 +904,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ${!allVoted ? `<div class="p-4 mb-4 bg-yellow-100 text-yellow-800 rounded-lg">Note: Not all classes have completed voting.</div>` : ''}
             <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 ${Object.keys(appData.classes).sort().map(className => {
-                    const status = appData.election.classStatus[className]?.status;
+                    const status = election.classStatus[className]?.status;
                     const canCount = status === 'voted';
                     const isCounted = status === 'counted';
                     let btnClass = 'bg-gray-400 cursor-not-allowed';
@@ -752,7 +933,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: `Please enter the election security password.`,
                     requiresInput: true,
                     onConfirm: (password) => {
-                        if (password === appData.election.password) {
+                        if (password === election.password) {
                             startCountingForClass(className);
                         } else {
                             alert('Incorrect password.');
@@ -769,10 +950,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderCountingScreen = (className) => {
+        const election = getActiveElection();
         const container = document.getElementById('counting-screen-view');
-        const candidates = appData.election.candidates
+        const candidates = election.candidates
             .filter(c => c.class === className)
-            .map(c => ({ ...c, votes: 0 })); // Add votes counter for UI
+            .map(c => ({ ...c, votes: 0 }));
 
         container.innerHTML = `
             <div class="text-center">
@@ -804,7 +986,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const animateCounting = (className) => {
-        const votes = appData.election.votes[className];
+        const election = getActiveElection();
+        const votes = election.votes[className];
         const totalVotes = votes.length;
         let i = 0;
 
@@ -822,157 +1005,119 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const candidateCard = document.querySelector(`.candidate-result-item[data-candidate-id='${candidateId}']`);
             
-            // Animate vote
-            const voteEl = document.createElement('div');
-            voteEl.innerHTML = '🗳️';
-            voteEl.className = 'counting-vote';
-            document.body.appendChild(voteEl);
-            const rect = candidateCard.getBoundingClientRect();
-            voteEl.style.left = (window.innerWidth / 2) + 'px';
-            voteEl.style.top = (window.innerHeight - 50) + 'px';
-            
-            setTimeout(() => {
-                voteEl.style.transform = `translate(${rect.left - window.innerWidth/2 + rect.width/2}px, ${rect.top - window.innerHeight + 50}px) scale(1.5)`;
-                voteEl.style.opacity = 0;
-            }, 50);
+            if (candidateCard) {
+                const voteEl = document.createElement('div');
+                voteEl.innerHTML = '🗳️';
+                voteEl.className = 'counting-vote';
+                document.body.appendChild(voteEl);
+                const rect = candidateCard.getBoundingClientRect();
+                voteEl.style.left = (window.innerWidth / 2) + 'px';
+                voteEl.style.top = (window.innerHeight - 50) + 'px';
+                
+                setTimeout(() => {
+                    voteEl.style.transform = `translate(${rect.left - window.innerWidth/2 + rect.width/2}px, ${rect.top - window.innerHeight + 50}px) scale(1.5)`;
+                    voteEl.style.opacity = 0;
+                }, 50);
 
-            setTimeout(() => {
-                voteEl.remove();
-                // Update count
-                const currentVotes = parseInt(candidateCard.dataset.votes) + 1;
-                candidateCard.dataset.votes = currentVotes;
-                document.getElementById(`vote-count-${candidateId}`).textContent = currentVotes;
-
-                // Update progress bar
-                const percentage = totalVotes > 0 ? (currentVotes / totalVotes) * 100 : 0;
-                candidateCard.querySelector('.bg-blue-600').style.width = `${percentage}%`;
-
-                // Re-sort list
-                const list = document.getElementById('counting-candidate-list');
-                const items = Array.from(list.children);
-                items.sort((a, b) => parseInt(b.dataset.votes) - parseInt(a.dataset.votes));
-                items.forEach(item => list.appendChild(item));
-            }, 500);
+                setTimeout(() => {
+                    voteEl.remove();
+                    const currentVotes = parseInt(candidateCard.dataset.votes) + 1;
+                    candidateCard.dataset.votes = currentVotes;
+                    document.getElementById(`vote-count-${candidateId}`).textContent = currentVotes;
+                    const percentage = totalVotes > 0 ? (currentVotes / totalVotes) * 100 : 0;
+                    candidateCard.querySelector('.bg-blue-600').style.width = `${percentage}%`;
+                    const list = document.getElementById('counting-candidate-list');
+                    const items = Array.from(list.children);
+                    items.sort((a, b) => parseInt(b.dataset.votes) - parseInt(a.dataset.votes));
+                    items.forEach(item => list.appendChild(item));
+                }, 500);
+            }
 
             i++;
-        }, 1000); // 1 second per vote
+        }, 1000);
     };
 
     const showResultModal = (className) => {
-        const candidates = appData.election.candidates.filter(c => c.class === className);
-        const votes = appData.election.votes[className];
+        const election = getActiveElection();
+        let candidates = election.candidates.filter(c => c.class === className);
+        const votes = election.votes[className];
         const results = {};
         candidates.forEach(c => results[c.id] = { ...c, count: 0 });
+        
+        let notaVotes = 0;
         votes.forEach(v => {
-            if (results[v.candidateId]) {
+            if (v.candidateId === 'NOTA') {
+                notaVotes++;
+            } else if (results[v.candidateId]) {
                 results[v.candidateId].count++;
             }
         });
 
-        const sortedResults = Object.values(results).sort((a, b) => b.count - a.count);
-        const winner = sortedResults[0];
-        const isDraw = sortedResults.length > 1 && sortedResults[0].count === sortedResults[1].count && sortedResults[0].count > 0;
+        let sortedResults = Object.values(results).sort((a, b) => b.count - a.count);
+        let winner = sortedResults.length > 0 ? sortedResults[0] : null;
+        let isDraw = winner && sortedResults.length > 1 && sortedResults[0].count === sortedResults[1].count && sortedResults[0].count > 0;
         const totalVotes = votes.length;
         
-        appData.election.classStatus[className] = { status: 'counted' };
+        election.classStatus[className] = { status: 'counted' };
+        
+        let finalWinner = winner;
+        let tieBreakerMessage = '';
 
-        let body = '';
         if (isDraw) {
             const tiedCandidates = sortedResults.filter(c => c.count === winner.count);
-            body = `
-                <div id="draw-container" class="text-center">
-                    <h2 class="text-2xl font-bold text-red-600">It's a Draw!</h2>
-                    <p class="my-2">The following candidates have tied:</p>
-                    <ul class="list-disc list-inside mb-4">
-                        ${tiedCandidates.map(c => `<li><strong>${c.name}</strong> (${c.count} votes)</li>`).join('')}
-                    </ul>
-                    <p>Click the button below to decide the winner with a coin toss.</p>
-                    <button id="coin-toss-btn" class="mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg">Toss Coin</button>
-                </div>
-                <div id="winner-container" class="hidden"></div>
-            `;
-
-            showModal({
-                title: `Tie Breaker for Class ${className}`,
-                body: body,
-                cancelText: 'Close',
-                onCancel: () => {
-                    renderCountingClassSelection();
-                    showView('counting-class-selection-view');
-                }
-            });
-
-            // Add event listener inside the now-visible modal
-            document.getElementById('coin-toss-btn').addEventListener('click', (e) => {
-                e.target.disabled = true;
-                e.target.textContent = 'Tossing...';
-
-                // Simulate coin toss
-                setTimeout(() => {
-                    const randomIndex = Math.floor(Math.random() * tiedCandidates.length);
-                    const finalWinner = tiedCandidates[randomIndex];
-                    
-                    // Store the winner
-                    appData.election.classStatus[className].winnerId = finalWinner.id;
-                    saveState();
-
-                    const winnerHTML = `
-                        <div class="text-center">
-                            <img src="${finalWinner.image}" class="w-32 h-32 mx-auto rounded-full object-cover border-4 border-green-400">
-                            <h2 class="text-2xl font-bold mt-4">Winner Selected by Coin Toss!</h2>
-                            <p class="text-lg text-gray-700"><strong>${finalWinner.name}</strong> is the new representative for Class ${className}.</p>
-                        </div>
-                    `;
-                    document.getElementById('draw-container').classList.add('hidden');
-                    const winnerContainer = document.getElementById('winner-container');
-                    winnerContainer.innerHTML = winnerHTML;
-                    winnerContainer.classList.remove('hidden');
-
-                    // Update modal footer
-                    document.getElementById('modal-confirm-btn').classList.add('hidden');
-                    document.getElementById('modal-cancel-btn').textContent = 'OK';
-
-                }, 2000); // 2-second delay for effect
-            });
-
-        } else {
-            // No draw, proceed as before
-            appData.election.classStatus[className].winnerId = winner.id;
-            saveState();
-
-            body = `
-                <div class="text-center">
-                    <img src="${winner.image}" class="w-32 h-32 mx-auto rounded-full object-cover border-4 border-green-400">
-                    <h2 class="text-2xl font-bold mt-4">Congratulations, ${winner.name}!</h2>
-                    <p class="text-lg text-gray-700">Selected as the representative for Class ${className}.</p>
-                    <p class="text-xl font-semibold mt-2">${winner.count} Votes (${totalVotes > 0 ? ((winner.count/totalVotes)*100).toFixed(1) : 0}%)</p>
-                </div>
-            `;
-            body += '<hr class="my-4"><h4 class="font-bold mb-2">Full Results:</h4>';
-            sortedResults.forEach(r => {
-                body += `<p>${r.name}: ${r.count} votes</p>`;
-            });
-
-            showModal({
-                title: `Results for Class ${className}`,
-                body: body,
-                cancelText: 'OK',
-                onCancel: () => {
-                    renderCountingClassSelection();
-                    showView('counting-class-selection-view');
-                }
-            });
+            const randomIndex = Math.floor(Math.random() * tiedCandidates.length);
+            finalWinner = tiedCandidates[randomIndex];
+            tieBreakerMessage = `<p class="text-sm text-yellow-600 font-semibold">(Won by random tie-breaker)</p>`;
         }
+        
+        if (finalWinner) {
+            election.classStatus[className].winnerId = finalWinner.id;
+        }
+        saveState();
+
+        let body = '';
+        if (finalWinner && finalWinner.count > 0) {
+             body = `
+                <div class="text-center">
+                    <img src="${finalWinner.image}" class="w-32 h-32 mx-auto rounded-full object-cover border-4 border-green-400">
+                    <h2 class="text-2xl font-bold mt-4">Congratulations, ${finalWinner.name}!</h2>
+                    ${tieBreakerMessage}
+                    <p class="text-lg text-gray-700">Selected as the representative for Class ${className}.</p>
+                    <p class="text-xl font-semibold mt-2">${finalWinner.count} Votes (${totalVotes > 0 ? ((finalWinner.count/totalVotes)*100).toFixed(1) : 0}%)</p>
+                </div>
+            `;
+        } else {
+             body = `<h2 class="text-2xl font-bold text-center">No Winner Declared</h2><p class="text-center mt-2">No votes were cast for any candidate.</p>`;
+        }
+        
+        body += '<hr class="my-4"><h4 class="font-bold mb-2">Full Results:</h4>';
+        sortedResults.forEach(r => {
+            body += `<p>${r.name}: ${r.count} votes</p>`;
+        });
+        if (election.includeNota) {
+            body += `<p>NOTA: ${notaVotes} votes</p>`;
+        }
+
+        showModal({
+            title: `Results for Class ${className}`,
+            body: body,
+            cancelText: 'OK',
+            onCancel: () => {
+                renderCountingClassSelection();
+                showView('counting-class-selection-view');
+            }
+        });
     };
     
     // --- STEP 12: REPORTS ---
     const renderReportsView = () => {
+        const election = getActiveElection();
         const container = document.getElementById('reports-view');
         container.innerHTML = `
             <h2 class="text-3xl font-bold mb-6">Election Reports</h2>
             <button id="back-to-dash-3" class="mb-4 bg-gray-500 text-white p-2 rounded">Back to Dashboard</button>
             <div class="bg-white p-6 rounded-xl shadow-md space-y-4">
-                <p>Generate PDF reports for the completed election.</p>
+                <p>Generate PDF reports for the election: <strong>${election.name}</strong></p>
                 <div class="flex space-x-4">
                     <button id="report-winners-btn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg">Generate Winner's List</button>
                     <button id="report-detailed-btn" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg">Generate Detailed Report</button>
@@ -985,28 +1130,29 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const generateWinnersReport = () => {
+        const election = getActiveElection();
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         
         doc.setFontSize(18);
         doc.text(`${appData.school.name} - Election Winners`, 14, 22);
         doc.setFontSize(12);
-        doc.text(`Report for: ${appData.election.name}`, 14, 30);
+        doc.text(`Report for: ${election.name}`, 14, 30);
 
         const tableData = [];
         const headers = [['Class', 'Representative', 'Votes Received']];
 
         Object.keys(appData.classes).sort().forEach(className => {
-            const classInfo = appData.election.classStatus[className];
+            const classInfo = election.classStatus[className];
             if (classInfo?.status === 'counted') {
                 const winnerId = classInfo.winnerId;
-                const winner = appData.election.candidates.find(c => c.id === winnerId);
+                const winner = election.candidates.find(c => c.id === winnerId);
                 
                 if (winner) {
-                    const votes = appData.election.votes[className] || [];
+                    const votes = election.votes[className] || [];
                     const winnerVoteCount = votes.filter(v => v.candidateId == winner.id).length;
                     
-                    const tiedCandidates = appData.election.candidates
+                    const tiedCandidates = election.candidates
                         .filter(c => c.class === className)
                         .map(c => ({
                             name: c.name,
@@ -1016,7 +1162,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     let winnerName = winner.name;
                     if (tiedCandidates.length > 1) {
-                        winnerName += " (Won by Coin Toss)";
+                        winnerName += " (Won by Tie-Breaker)";
                     }
 
                     tableData.push([
@@ -1024,6 +1170,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         winnerName,
                         winnerVoteCount
                     ]);
+                } else {
+                     tableData.push([ className, "No Winner", "N/A"]);
                 }
             }
         });
@@ -1034,24 +1182,25 @@ document.addEventListener('DOMContentLoaded', () => {
             startY: 40
         });
 
-        doc.save(`Winners_Report_${appData.election.name}.pdf`);
+        doc.save(`Winners_Report_${election.name}.pdf`);
     };
 
     const generateDetailedReport = () => {
+        const election = getActiveElection();
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         
         doc.setFontSize(18);
         doc.text(`${appData.school.name} - Detailed Election Report`, 14, 22);
         doc.setFontSize(12);
-        doc.text(`Report for: ${appData.election.name}`, 14, 30);
+        doc.text(`Report for: ${election.name}`, 14, 30);
         let startY = 40;
 
         Object.keys(appData.classes).sort().forEach(className => {
-            const classInfo = appData.election.classStatus[className];
+            const classInfo = election.classStatus[className];
             if (classInfo?.status === 'counted') {
                 const totalVoters = appData.classes[className].length;
-                const votes = appData.election.votes[className] || [];
+                const votes = election.votes[className] || [];
                 const totalVotesCast = votes.length;
                 const votePercentage = totalVoters > 0 ? ((totalVotesCast / totalVoters) * 100).toFixed(1) : 0;
                 
@@ -1062,11 +1211,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 doc.text(`Total Students: ${totalVoters} | Votes Cast: ${totalVotesCast} (${votePercentage}%)`, 14, startY);
                 startY += 5;
 
-                const candidates = appData.election.candidates.filter(c => c.class === className);
+                const candidates = election.candidates.filter(c => c.class === className);
                 const results = {};
                 candidates.forEach(c => results[c.id] = { ...c, count: 0 });
+                let notaVotes = 0;
                 votes.forEach(v => {
-                    if (results[v.candidateId]) results[v.candidateId].count++;
+                    if (v.candidateId === 'NOTA') {
+                        notaVotes++;
+                    } else if (results[v.candidateId]) {
+                        results[v.candidateId].count++;
+                    }
                 });
                 const sorted = Object.values(results).sort((a,b) => b.count - a.count);
                 
@@ -1075,6 +1229,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     c.count,
                     totalVotesCast > 0 ? ((c.count / totalVotesCast) * 100).toFixed(1) + '%' : '0%'
                 ]);
+
+                if (election.includeNota) {
+                    tableData.push(['NOTA', notaVotes, totalVotesCast > 0 ? ((notaVotes / totalVotesCast) * 100).toFixed(1) + '%' : '0%']);
+                }
 
                 doc.autoTable({
                     head: [['Candidate', 'Votes', 'Vote Share']],
@@ -1087,7 +1245,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        doc.save(`Detailed_Report_${appData.election.name}.pdf`);
+        doc.save(`Detailed_Report_${election.name}.pdf`);
     };
     
     // --- INSTRUCTIONS AND SAMPLE DATA ---
@@ -1104,8 +1262,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             <li>Click "Choose File" and select your completed Excel file. A progress bar will show the import status.</li>
                         </ul>
                     </li>
-                    <li><strong>Create Election:</strong> Give your election a name (e.g., "Class Representatives 2025") and a secure password. This password is vital for controlling the election flow.</li>
-                    <li><strong>Add Candidates:</strong> For each candidate, select their class, name, and upload a square photo (e.g., 500x500 pixels) for the best appearance.</li>
+                    <li><strong>Create & Manage Elections:</strong> Create one or more elections. You can edit or delete them before voting starts. Select an election to make it active for adding candidates and voting.</li>
+                    <li><strong>Add & Manage Candidates:</strong> For the active election, add candidates. You can delete them from the list before voting for their class begins.</li>
                     <li><strong>Start Voting:</strong>
                         <ul class="list-disc list-inside ml-4">
                             <li>Go to "Start Voting" and select a class.</li>
@@ -1115,8 +1273,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             <li>After the last student has voted, the admin presses the <strong>ESC</strong> key and enters the password to end the session for that class.</li>
                         </ul>
                     </li>
-                    <li><strong>Start Counting:</strong> Once voting is complete for a class, go to "Start Counting", select the class, and enter the password. Watch the animated vote count. If there is a draw, a "Toss Coin" button will appear to decide the winner.</li>
-                    <li><strong>View Reports:</strong> After all classes are counted, go to "View Reports" to generate and download detailed PDF reports of the election results.</li>
+                    <li><strong>Start Counting:</strong> Once voting is complete, go to "Start Counting" and select a class. If there is a draw, a winner will be chosen automatically by a random tie-breaker.</li>
+                    <li><strong>View Reports:</strong> After all classes are counted, go to "View Reports" to generate and download detailed PDF reports.</li>
                 </ol>
                 <p class="font-bold mt-4">Important: All data is saved in your browser's local storage. It is not sent online. Clearing your browser's cache may erase the data.</p>
             </div>
@@ -1159,8 +1317,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Error message is already shown on the screen
         }
     };
-
+    
+    // Initialize the app
     initializeApp();
+    renderElectionForm(); // Set up the initial create election form and its button listener
+
 });
 </script>
 </body>
