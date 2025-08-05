@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>vElect - School Election System</title>
+    <title>Offline School Election System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Library for reading Excel files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -19,7 +19,7 @@
         .active-view { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background-color: white; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); width: 90%; max-width: 500px; display: flex; flex-direction: column; max-height: 90vh; }
+        .modal-content { background-color: white; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); width: 90%; max-width: 680px; display: flex; flex-direction: column; max-height: 90vh; }
         .modal-body { overflow-y: auto; }
         .counting-vote {
             animation: flyToCandidate 1s ease-in-out;
@@ -45,7 +45,7 @@
     <div id="app-container" class="container mx-auto p-4">
         <!-- Header -->
         <header class="bg-white shadow rounded-lg p-4 mb-6 flex justify-between items-center">
-            <h1 id="header-title" class="text-2xl font-bold text-blue-600">vElect - School Election System</h1>
+            <h1 id="header-title" class="text-2xl font-bold text-blue-600">School Election Portal</h1>
             <div id="header-buttons" class="flex items-center space-x-4">
                 <button id="instructions-btn" class="hidden bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition">How to Use</button>
                 <button id="logout-button" class="hidden bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition">Logout</button>
@@ -69,6 +69,7 @@
                 <input id="school-code-input" type="text" placeholder="School Code" class="w-full p-3 mb-4 border rounded-lg">
                 <div id="school-name-display" class="hidden p-3 mb-4 bg-green-100 text-green-800 rounded-lg"></div>
                 <button id="confirm-school-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition">Confirm School</button>
+                <button id="report-missing-school-btn" class="mt-4 w-full text-sm text-blue-600 hover:underline">Can't find your school?</button>
             </div>
 
             <!-- Admin Dashboard (Hub for all actions) -->
@@ -334,16 +335,33 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- STEP 2: SCHOOL SETUP ---
     document.getElementById('confirm-school-btn').addEventListener('click', () => {
         const code = document.getElementById('school-code-input').value.trim();
-        const schoolInfo = schoolsData.find(school => school["School Code"] === code);
+        const schoolInfo = schoolsData.find(school => 
+            school.school_code === code || 
+            school.hss_code === code || 
+            school.vhse_code === code
+        );
         
         if (schoolInfo) {
-            appData.school = { code, name: schoolInfo["School Name"] };
+            appData.school = { code, name: schoolInfo.school_name };
             saveState();
             showView('admin-dashboard-view');
             renderAdminDashboard();
         } else {
             alert('Invalid School Code');
         }
+    });
+
+    document.getElementById('report-missing-school-btn').addEventListener('click', () => {
+        const formHTML = `
+            <p class="mb-4">If your school is not listed, please fill out this form to request it be added.</p>
+            <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSevJGeya80M4LqgWQVs-9b56nNi1fThPgJNfP_9sVZ4_pT5Vw/viewform?embedded=true" 
+                width="100%" height="450" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>
+        `;
+        showModal({
+            title: 'Report Missing School',
+            body: formHTML,
+            cancelText: 'Close'
+        });
     });
 
     // --- STEP 3: STUDENT DATA (Using Web Worker) ---
