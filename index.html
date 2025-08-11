@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>vElect - School Election Portal</title>
+    <title>vElect</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Library for reading Excel files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -40,12 +40,11 @@
         }
         /* Dynamic candidate card container */
         #candidate-cards {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            align-items: center;
-            gap: 2rem;
-            height: calc(100vh - 200px); /* Adjust based on header height */
+            display: grid;
+            gap: 1rem;
+            place-items: center;
+            height: calc(100vh - 220px); /* Adjust based on header height */
+            padding: 1rem;
         }
     </style>
 </head>
@@ -148,6 +147,16 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Data Management -->
+                <div class="mt-8 bg-white p-6 rounded-xl shadow-md">
+                    <h3 class="text-xl font-bold mb-4">Data Management</h3>
+                    <div class="flex space-x-4">
+                        <button id="export-data-btn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg">Export Data</button>
+                        <label for="import-data-input" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg text-center cursor-pointer">Import Data</label>
+                        <input type="file" id="import-data-input" class="hidden" accept=".json">
+                    </div>
+                </div>
 
             </div>
             
@@ -217,14 +226,77 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutButton = document.getElementById('logout-button');
     const instructionsButton = document.getElementById('instructions-btn');
     const mainContent = document.getElementById('main-content');
+    
+    // --- DEFAULT IMAGES ---
+    const femaleIcon = 'female.png';
+    const maleIcon = 'male.png';
+
+    // --- IndexedDB HELPER ---
+    const db = {
+        instance: null,
+        init() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('ElectionDB', 1);
+                request.onupgradeneeded = (event) => {
+                    const dbInstance = event.target.result;
+                    dbInstance.createObjectStore('candidate_images', { keyPath: 'id' });
+                };
+                request.onsuccess = (event) => {
+                    this.instance = event.target.result;
+                    resolve();
+                };
+                request.onerror = (event) => {
+                    console.error("IndexedDB error:", event.target.errorCode);
+                    reject(event.target.errorCode);
+                };
+            });
+        },
+        addImage(id, imageFile) {
+            return new Promise((resolve, reject) => {
+                const transaction = this.instance.transaction(['candidate_images'], 'readwrite');
+                const store = transaction.objectStore('candidate_images');
+                const request = store.put({ id: id, image: imageFile });
+                request.onsuccess = () => resolve();
+                request.onerror = (event) => reject(event.target.error);
+            });
+        },
+        getImage(id) {
+            return new Promise((resolve, reject) => {
+                const transaction = this.instance.transaction(['candidate_images'], 'readonly');
+                const store = transaction.objectStore('candidate_images');
+                const request = store.get(id);
+                request.onsuccess = (event) => resolve(event.target.result?.image);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        },
+        deleteImage(id) {
+            return new Promise((resolve, reject) => {
+                const transaction = this.instance.transaction(['candidate_images'], 'readwrite');
+                const store = transaction.objectStore('candidate_images');
+                const request = store.delete(id);
+                request.onsuccess = () => resolve();
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+    };
 
     // --- UTILITY FUNCTIONS ---
     const saveState = () => {
         try {
-            localStorage.setItem('electionAppData', JSON.stringify(appData));
+            // Don't save images in localStorage
+            const stateToSave = { ...appData };
+            stateToSave.elections = appData.elections.map(election => {
+                const electionCopy = { ...election };
+                electionCopy.candidates = election.candidates.map(c => {
+                    const { image, ...rest } = c; // Exclude image property
+                    return rest;
+                });
+                return electionCopy;
+            });
+            localStorage.setItem('electionAppData', JSON.stringify(stateToSave));
         } catch (e) {
             console.error("Error saving state:", e);
-            alert("Could not save state. The browser storage might be full.");
+            showModal({ title: 'Error', body: 'Could not save state. The browser storage might be full.', cancelText: 'OK' });
         }
     };
 
@@ -232,7 +304,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedData = localStorage.getItem('electionAppData');
         if (savedData) {
             appData = JSON.parse(savedData);
-            // FIX: Ensure appData.elections is an array, handling old localStorage data
             if (!Array.isArray(appData.elections)) {
                 appData.elections = [];
             }
@@ -258,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutButton.classList.toggle('hidden', !isLoggedIn);
         instructionsButton.classList.toggle('hidden', !isLoggedIn);
         
-        headerButtons.classList.toggle('hidden', viewId === 'voting-screen-view');
+        headerButtons.classList.toggle('hidden', viewId === 'voting-screen-view' || viewId === 'counting-screen-view');
         headerTitle.textContent = appData.school ? `${appData.school.name} Election` : 'School Election Portal';
     };
 
@@ -299,7 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const hideModal = () => document.getElementById('modal').classList.add('hidden');
 
-    const getActiveElection = () => appData.elections.find(e => e.id === appData.activeElectionId);
+    const getActiveElection = () => appData.elections.find(e => e.id.toString() === appData.activeElectionId);
 
     // --- FULLSCREEN API ---
     const enterFullScreen = (element) => {
@@ -330,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             saveState();
         } else {
-            alert('Invalid credentials');
+            showModal({ title: 'Login Failed', body: 'Invalid username or password.', cancelText: 'OK' });
         }
     });
     
@@ -356,7 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showView('admin-dashboard-view');
             renderAdminDashboard();
         } else {
-            alert('Invalid School Code');
+            showModal({ title: 'Error', body: 'Invalid School Code. Please try again or report if your school is missing.', cancelText: 'OK' });
         }
     });
 
@@ -469,7 +540,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 worker.terminate();
             } else if (type === 'error') {
-                alert('An error occurred while processing the file: ' + message);
+                showModal({ title: 'Error', body: 'An error occurred while processing the file: ' + message, cancelText: 'OK' });
                 document.getElementById('progress-modal').classList.add('hidden');
                 worker.terminate();
             }
@@ -505,7 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const includeNota = document.getElementById('include-nota').checked;
         if (name && password) {
             appData.elections.push({
-                id: Date.now(),
+                id: Date.now().toString(),
                 name,
                 password,
                 includeNota,
@@ -517,7 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderAdminDashboard();
             renderElectionForm(); // Reset form
         } else {
-            alert('Please provide both an election name and a password.');
+            showModal({ title: 'Error', body: 'Please provide both an election name and a password.', cancelText: 'OK' });
         }
     };
 
@@ -537,7 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const election = appData.elections.find(e => e.id === electionId);
         const isVotingStarted = Object.values(election.classStatus).some(s => s.status === 'voted' || s.status === 'counted');
         if (isVotingStarted) {
-            alert('Cannot delete an election after voting has started.');
+            showModal({ title: 'Error', body: 'Cannot delete an election after voting has started.', cancelText: 'OK' });
             return;
         }
         showModal({
@@ -610,40 +681,52 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('candidate-gender').value = student ? student.gender : '';
     });
 
-    document.getElementById('add-candidate-btn').addEventListener('click', () => {
+    document.getElementById('add-candidate-btn').addEventListener('click', async () => {
         const election = getActiveElection();
         const className = document.getElementById('candidate-class-select').value;
         const name = document.getElementById('candidate-name-select').value;
         const gender = document.getElementById('candidate-gender').value;
         const imageFile = document.getElementById('candidate-image-input').files[0];
 
-        if (!election) { alert("Select an active election first."); return; }
-        if (className === 'Select a class' || name === 'Select a student' || !imageFile) {
-            alert("Please fill all candidate details, including an image.");
+        if (!election) { showModal({ title: 'Error', body: 'Select an active election first.', cancelText: 'OK' }); return; }
+        if (className === 'Select a class' || name === 'Select a student') {
+            showModal({ title: 'Error', body: 'Please fill all candidate details.', cancelText: 'OK' });
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            election.candidates.push({ id: Date.now(), name, class: className, gender, image: e.target.result });
+        const newCandidate = {
+            id: Date.now().toString(), // Use string for ID consistency
+            name,
+            class: className,
+            gender,
+            hasImage: !!imageFile
+        };
+
+        try {
+            if (imageFile) {
+                await db.addImage(newCandidate.id, imageFile);
+            }
+            election.candidates.push(newCandidate);
             saveState();
-            alert(`Candidate ${name} added successfully.`);
+            showModal({ title: 'Success', body: `Candidate ${name} added successfully.`, cancelText: 'OK' });
             renderCandidateList();
             document.getElementById('candidate-class-select').value = 'Select a class';
             document.getElementById('candidate-name-select').innerHTML = '<option>Select a student</option>';
             document.getElementById('candidate-gender').value = '';
             document.getElementById('candidate-image-input').value = '';
-        };
-        reader.readAsDataURL(imageFile);
+        } catch (error) {
+            console.error("Failed to add candidate image to DB:", error);
+            showModal({ title: 'Error', body: 'Could not save candidate image. The database might be full or corrupted.', cancelText: 'OK' });
+        }
     });
 
-    const deleteCandidate = (candidateId) => {
+    const deleteCandidate = async (candidateId) => {
         const election = getActiveElection();
         const candidate = election.candidates.find(c => c.id === candidateId);
         const classStatus = election.classStatus[candidate.class]?.status;
 
         if (classStatus === 'voted' || classStatus === 'counted') {
-            alert(`Cannot delete candidate from Class ${candidate.class} as voting has already started or completed.`);
+            showModal({ title: 'Error', body: `Cannot delete candidate from Class ${candidate.class} as voting has already started or completed.`, cancelText: 'OK' });
             return;
         }
 
@@ -651,10 +734,18 @@ document.addEventListener('DOMContentLoaded', () => {
             title: 'Delete Candidate?',
             body: `Are you sure you want to delete candidate "${candidate.name}"?`,
             confirmText: 'Delete',
-            onConfirm: () => {
-                election.candidates = election.candidates.filter(c => c.id !== candidateId);
-                saveState();
-                renderCandidateList();
+            onConfirm: async () => {
+                try {
+                    if (candidate.hasImage) {
+                        await db.deleteImage(candidateId);
+                    }
+                    election.candidates = election.candidates.filter(c => c.id !== candidateId);
+                    saveState();
+                    renderCandidateList();
+                } catch (error) {
+                    console.error("Failed to delete candidate image:", error);
+                    showModal({ title: 'Error', body: 'Could not delete candidate image from the database.', cancelText: 'OK' });
+                }
             }
         });
     };
@@ -695,9 +786,9 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `).join('');
 
-        listContainer.querySelectorAll('.select-election-btn').forEach(b => b.onclick = (e) => selectElection(Number(e.target.dataset.id)));
-        listContainer.querySelectorAll('.edit-election-btn').forEach(b => b.onclick = (e) => renderElectionForm(appData.elections.find(el => el.id === Number(e.target.dataset.id))));
-        listContainer.querySelectorAll('.delete-election-btn').forEach(b => b.onclick = (e) => deleteElection(Number(e.target.dataset.id)));
+        listContainer.querySelectorAll('.select-election-btn').forEach(b => b.onclick = (e) => selectElection(e.target.dataset.id));
+        listContainer.querySelectorAll('.edit-election-btn').forEach(b => b.onclick = (e) => renderElectionForm(appData.elections.find(el => el.id.toString() === e.target.dataset.id)));
+        listContainer.querySelectorAll('.delete-election-btn').forEach(b => b.onclick = (e) => deleteElection(e.target.dataset.id));
     };
 
     const renderCandidateList = () => {
@@ -728,22 +819,22 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `).join('');
 
-        listContainer.querySelectorAll('.delete-candidate-btn').forEach(b => b.onclick = (e) => deleteCandidate(Number(e.target.dataset.id)));
+        listContainer.querySelectorAll('.delete-candidate-btn').forEach(b => b.onclick = (e) => deleteCandidate(e.target.dataset.id));
     };
     
     // --- NAVIGATION ---
     document.getElementById('goto-voting-btn').addEventListener('click', () => {
-        if (!getActiveElection()) { alert("Select an active election first."); return; }
+        if (!getActiveElection()) { showModal({ title: 'Error', body: 'Select an active election first.', cancelText: 'OK' }); return; }
         renderVotingClassSelection();
         showView('voting-class-selection-view');
     });
     document.getElementById('goto-counting-btn').addEventListener('click', () => {
-        if (!getActiveElection()) { alert("Select an active election first."); return; }
+        if (!getActiveElection()) { showModal({ title: 'Error', body: 'Select an active election first.', cancelText: 'OK' }); return; }
         renderCountingClassSelection();
         showView('counting-class-selection-view');
     });
     document.getElementById('goto-reports-btn').addEventListener('click', () => {
-        if (!getActiveElection()) { alert("Select an active election first."); return; }
+        if (!getActiveElection()) { showModal({ title: 'Error', body: 'Select an active election first.', cancelText: 'OK' }); return; }
         renderReportsView();
         showView('reports-view');
     });
@@ -783,7 +874,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (password === election.password) {
                             startVotingForClass(className);
                         } else {
-                            alert('Incorrect password.');
+                            showModal({ title: 'Error', body: 'Incorrect password.', cancelText: 'OK' });
                         }
                     }
                 });
@@ -803,7 +894,7 @@ document.addEventListener('DOMContentLoaded', () => {
         enterFullScreen(document.documentElement); // Enter fullscreen
     };
 
-    const renderVotingScreen = () => {
+    const renderVotingScreen = async () => {
         const election = getActiveElection();
         const container = document.getElementById('voting-screen-view');
         const className = appData.currentVotingClass;
@@ -811,41 +902,50 @@ document.addEventListener('DOMContentLoaded', () => {
         let candidates = election.candidates.filter(c => c.class === className);
         
         const totalCandidates = candidates.length + (election.includeNota ? 1 : 0);
-        let cardSizeClass = '';
-        if (totalCandidates <= 4) {
-            cardSizeClass = 'w-1/2 md:w-1/3 lg:w-1/4';
-        } else if (totalCandidates <= 6) {
-            cardSizeClass = 'w-1/2 md:w-1/3 lg:w-1/4';
-        } else {
-            cardSizeClass = 'w-1/3 md:w-1/4 lg:w-1/5';
-        }
+        let gridClass = 'grid-cols-2';
+        if (totalCandidates > 9) gridClass = 'grid-cols-5';
+        else if (totalCandidates > 6) gridClass = 'grid-cols-4';
+        else if (totalCandidates > 4) gridClass = 'grid-cols-3';
 
+        let cardSizeClass = 'p-2';
+        let imageSizeClass = 'w-24 h-24 md:w-32 md:h-32';
+        let textSizeClass = 'text-lg';
+
+        if (totalCandidates <= 4) {
+            cardSizeClass = 'p-6';
+            imageSizeClass = 'w-32 h-32 md:w-48 md:h-48';
+            textSizeClass = 'text-2xl';
+        } else if (totalCandidates <= 9) {
+            cardSizeClass = 'p-4';
+            imageSizeClass = 'w-24 h-24 md:w-32 md:h-32';
+            textSizeClass = 'text-xl';
+        }
 
         let notaCardHTML = '';
         if (election.includeNota) {
             notaCardHTML = `
-                <div class="candidate-card bg-gray-200 rounded-2xl shadow-lg p-4 text-center cursor-pointer transition-transform transform hover:scale-105 flex flex-col items-center justify-center ${cardSizeClass}">
-                    <div class="w-24 h-24 md:w-32 md:h-32 mx-auto rounded-full bg-gray-300 flex items-center justify-center border-4 border-gray-400">
+                <div class="candidate-card bg-gray-200 rounded-2xl shadow-lg text-center cursor-pointer transition-transform transform hover:scale-105 flex flex-col items-center justify-center ${cardSizeClass}" data-candidate-id="NOTA">
+                    <div class="${imageSizeClass} mx-auto rounded-full bg-gray-300 flex items-center justify-center border-4 border-gray-400">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                         </svg>
                     </div>
-                    <h3 class="mt-2 text-xl font-bold">NOTA</h3>
+                    <h3 class="mt-2 ${textSizeClass} font-bold">NOTA</h3>
                 </div>
             `;
         }
 
         container.innerHTML = `
-            <div class="text-center">
+            <div class="text-center pt-4">
                 <h2 class="text-4xl font-bold">Voting for Class ${className}</h2>
                 <p id="voter-counter" class="text-2xl mt-2 text-gray-600">Voter ${appData.currentVoterIndex + 1} of ${totalVoters}</p>
                 <p class="text-lg mt-4">Click on the candidate of your choice.</p>
             </div>
-            <div id="candidate-cards">
+            <div id="candidate-cards" class="grid ${gridClass}">
                 ${candidates.map(c => `
-                    <div class="candidate-card bg-white rounded-2xl shadow-lg p-4 text-center cursor-pointer transition-transform transform hover:scale-105 flex flex-col items-center justify-center ${cardSizeClass}">
-                        <img src="${c.image}" alt="${c.name}" class="w-24 h-24 md:w-32 md:h-32 mx-auto rounded-full object-cover border-4 border-gray-200">
-                        <h3 class="mt-2 text-xl font-bold">${c.name}</h3>
+                    <div class="candidate-card bg-white rounded-2xl shadow-lg text-center cursor-pointer transition-transform transform hover:scale-105 flex flex-col items-center justify-center ${cardSizeClass}" data-candidate-id="${c.id}">
+                        <img id="img-${c.id}" src="" alt="${c.name}" class="${imageSizeClass} mx-auto rounded-full object-cover border-4 border-gray-200 bg-gray-200">
+                        <h3 class="mt-2 ${textSizeClass} font-bold">${c.name}</h3>
                     </div>
                 `).join('')}
                 ${notaCardHTML}
@@ -855,6 +955,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p class="text-2xl mt-4">Please wait for the admin to continue.</p>
             </div>
         `;
+
+        // Asynchronously load images
+        for (const c of candidates) {
+            const imgElement = document.getElementById(`img-${c.id}`);
+            if (c.hasImage) {
+                db.getImage(c.id).then(imageBlob => {
+                    if (imageBlob) {
+                        imgElement.src = URL.createObjectURL(imageBlob);
+                    }
+                });
+            } else {
+                const gender = c.gender?.toLowerCase() || '';
+                imgElement.src = gender.startsWith('f') ? femaleIcon : maleIcon;
+            }
+        }
 
         container.querySelectorAll('.candidate-card').forEach(card => {
             card.addEventListener('click', handleVoteCast);
@@ -893,7 +1008,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderVotingClassSelection();
                     showView('voting-class-selection-view');
                 } else {
-                    alert('Incorrect password.');
+                    showModal({ title: 'Error', body: 'Incorrect password.', cancelText: 'OK' });
                 }
             }
         });
@@ -914,7 +1029,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         document.getElementById('voter-counter').innerHTML = '<span class="text-green-600 font-bold">All students have voted! Press ESC to finish.</span>';
                     }
                 } else {
-                    alert("The current voter hasn't voted yet.");
+                    showModal({ title: 'Wait', body: "The current voter hasn't voted yet.", cancelText: 'OK' });
                 }
             } else if (e.key === 'Escape') {
                 e.preventDefault();
@@ -974,7 +1089,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (password === election.password) {
                             startCountingForClass(className);
                         } else {
-                            alert('Incorrect password.');
+                            showModal({ title: 'Error', body: 'Incorrect password.', cancelText: 'OK' });
                         }
                     }
                 });
@@ -1003,7 +1118,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div id="counting-candidate-list" class="mt-8 space-y-4">
                 ${candidates.map(c => `
                     <div class="candidate-result-item flex items-center bg-white p-4 rounded-lg shadow" data-candidate-id="${c.id}" data-votes="0">
-                        <img src="${c.image}" class="w-16 h-16 rounded-full mr-4 object-cover">
+                        <img id="img-count-${c.id}" src="" class="w-16 h-16 rounded-full mr-4 object-cover bg-gray-200">
                         <div class="flex-grow">
                             <h3 class="text-xl font-bold">${c.name}</h3>
                             <div class="w-full bg-gray-200 rounded-full h-4 mt-1">
@@ -1015,6 +1130,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 `).join('')}
             </div>
         `;
+
+        // Asynchronously load images
+        for (const c of candidates) {
+            const imgElement = document.getElementById(`img-count-${c.id}`);
+             if (c.hasImage) {
+                db.getImage(c.id).then(imageBlob => {
+                    if (imageBlob) {
+                        imgElement.src = URL.createObjectURL(imageBlob);
+                    }
+                });
+            } else {
+                const gender = c.gender?.toLowerCase() || '';
+                imgElement.src = gender.startsWith('f') ? femaleIcon : maleIcon;
+            }
+        }
 
         document.getElementById('begin-counting-btn').addEventListener('click', (e) => {
             e.target.disabled = true;
@@ -1038,7 +1168,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const vote = votes[i];
-            const candidateId = vote.candidateId;
+            const candidateId = vote.candidateId.toString();
             document.getElementById('counting-status').textContent = `Counting vote ${i + 1} of ${totalVotes}`;
 
             const candidateCard = document.querySelector(`.candidate-result-item[data-candidate-id='${candidateId}']`);
@@ -1094,14 +1224,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let sortedResults = Object.values(results).sort((a, b) => b.count - a.count);
         let winner = sortedResults.length > 0 ? sortedResults[0] : null;
         let isDraw = winner && sortedResults.length > 1 && sortedResults[0].count === sortedResults[1].count && sortedResults[0].count > 0;
-        const totalVotes = votes.length;
         
         election.classStatus[className] = { status: 'counted' };
         
-        let body = '';
         if (isDraw) {
             const tiedCandidates = sortedResults.filter(c => c.count === winner.count);
-            body = `
+            const body = `
                 <div id="draw-container" class="text-center">
                     <h2 class="text-2xl font-bold text-red-600">It's a Draw!</h2>
                     <p class="my-2">The following candidates have tied:</p>
@@ -1145,7 +1273,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let tieBreakerMessage = wasTie ? `<p class="text-sm text-yellow-600 font-semibold">(Won by random tie-breaker)</p>` : '';
         
         let voteLead = '';
-        if (sortedResults.length > 1) {
+        if (winner && sortedResults.length > 1) {
             const lead = sortedResults[0].count - sortedResults[1].count;
             if (lead > 0) {
                 voteLead = `<p class="text-md mt-1">(Lead by ${lead} vote${lead > 1 ? 's' : ''})</p>`;
@@ -1156,7 +1284,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (winner && winner.count > 0) {
              body = `
                 <div class="text-center">
-                    <img src="${winner.image}" class="w-32 h-32 mx-auto rounded-full object-cover border-4 border-green-400">
+                    <img id="winner-img" src="" class="w-32 h-32 mx-auto rounded-full object-cover border-4 border-green-400 bg-gray-200">
                     <h2 class="text-2xl font-bold mt-4">Congratulations, ${winner.name}!</h2>
                     ${tieBreakerMessage}
                     <p class="text-lg text-gray-700">Selected as the representative for Class ${className}.</p>
@@ -1185,6 +1313,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 showView('counting-class-selection-view');
             }
         });
+
+        if (winner) {
+            const imgElement = document.getElementById('winner-img');
+            if (winner.hasImage) {
+                db.getImage(winner.id).then(imageBlob => {
+                    if(imageBlob) imgElement.src = URL.createObjectURL(imageBlob);
+                });
+            } else {
+                const gender = winner.gender?.toLowerCase() || '';
+                imgElement.src = gender.startsWith('f') ? femaleIcon : maleIcon;
+            }
+        }
     }
     
     // --- STEP 12: REPORTS ---
@@ -1209,7 +1349,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('report-detailed-btn').addEventListener('click', generateDetailedReport);
     };
 
-    const generateCandidateListReport = () => {
+    const generateCandidateListReport = async () => {
         const election = getActiveElection();
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
@@ -1226,21 +1366,54 @@ document.addEventListener('DOMContentLoaded', () => {
             return acc;
         }, {});
 
-        Object.keys(candidatesByClass).sort().forEach(className => {
+        for (const className of Object.keys(candidatesByClass).sort()) {
             doc.setFontSize(14);
             doc.text(`Class: ${className}`, 14, startY);
             startY += 7;
 
-            const tableData = candidatesByClass[className].map(c => [c.name, c.gender]);
+            const tableData = [];
+            for(const c of candidatesByClass[className]) {
+                let imageSrc = '';
+                if (c.hasImage) {
+                    const imageBlob = await db.getImage(c.id);
+                    if (imageBlob) {
+                        const reader = new FileReader();
+                        await new Promise(resolve => {
+                            reader.onload = (e) => {
+                                imageSrc = e.target.result;
+                                resolve();
+                            };
+                            reader.readAsDataURL(imageBlob);
+                        });
+                    }
+                } else {
+                    const gender = c.gender?.toLowerCase() || '';
+                    imageSrc = gender.startsWith('f') ? femaleIcon : maleIcon;
+                }
+                tableData.push([{ content: '', image: imageSrc, width: 10 }, c.name, c.gender]);
+            }
             
             doc.autoTable({
-                head: [['Candidate Name', 'Gender']],
+                head: [['Photo', 'Candidate Name', 'Gender']],
                 body: tableData,
                 startY: startY,
-                theme: 'grid'
+                theme: 'grid',
+                columnStyles: { 0: { cellWidth: 15 } },
+                didParseCell: function (data) {
+                    if (data.section === 'body') {
+                        data.cell.styles.minCellHeight = 15;
+                    }
+                },
+                didDrawCell: (data) => {
+                    if (data.column.index === 0 && data.cell.section === 'body' && data.cell.raw.image) {
+                        const imgData = data.cell.raw.image;
+                        const y = data.cell.y + (data.cell.height - 10) / 2;
+                        doc.addImage(imgData, 'PNG', data.cell.x + 2.5, y, 10, 10);
+                    }
+                }
             });
             startY = doc.lastAutoTable.finalY + 15;
-        });
+        }
 
         doc.save(`Candidate_List_${election.name}.pdf`);
     };
@@ -1391,6 +1564,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </li>
                     <li><strong>Start Counting:</strong> Once voting is complete, go to "Start Counting" and select a class. If there is a draw, a winner will be chosen automatically by a random tie-breaker.</li>
                     <li><strong>View Reports:</strong> After all classes are counted, go to "View Reports" to generate and download detailed PDF reports.</li>
+                    <li><strong>Data Management:</strong> Use the "Export Data" button to save a backup of all your election data. Use "Import Data" on another computer to load this backup and continue your work.</li>
                 </ol>
                 <p class="font-bold mt-4">Important: All data is saved in your browser's local storage. It is not sent online. Clearing your browser's cache may erase the data.</p>
             </div>
@@ -1414,29 +1588,83 @@ document.addEventListener('DOMContentLoaded', () => {
         XLSX.writeFile(workbook, "student_data_sample.xlsx");
     });
 
+    // --- DATA MANAGEMENT ---
+    document.getElementById('export-data-btn').addEventListener('click', () => {
+        try {
+            const dataStr = JSON.stringify(appData);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `election_data_backup_${new Date().toISOString().slice(0,10)}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            showModal({ title: 'Success', body: 'Data exported successfully.', cancelText: 'OK' });
+        } catch (error) {
+            showModal({ title: 'Error', body: 'Could not export data.', cancelText: 'OK' });
+        }
+    });
+
+    document.getElementById('import-data-input').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const importedData = JSON.parse(event.target.result);
+                showModal({
+                    title: 'Confirm Import',
+                    body: 'Are you sure you want to import this data? This will overwrite all current election data.',
+                    confirmText: 'Import',
+                    onConfirm: () => {
+                        appData = importedData;
+                        saveState();
+                        window.location.reload();
+                    }
+                });
+            } catch (error) {
+                showModal({ title: 'Error', body: 'Invalid or corrupted data file.', cancelText: 'OK' });
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = ''; // Reset input
+    });
+
 
     // --- INITIAL LOAD ---
     const initializeApp = async () => {
         try {
+            await db.init();
             const response = await fetch('schools.json');
             if (!response.ok) {
                 document.body.innerHTML = `<div class="p-8 text-center text-red-600">
                     <h1 class="text-2xl font-bold">Error: Could not load configuration file.</h1>
-                    <p>Please make sure a valid <strong>schools.json</strong> file is in the same folder as this HTML file.</p>
+                    <p>Please make sure a valid <strong>schools.json</strong> file is in the same folder as this HTML file and that you are running this from a local web server.</p>
                 </div>`;
                 throw new Error('Failed to load schools.json');
             }
             schoolsData = await response.json();
-            loadState(); // Load the rest of the app state after school data is ready
+            loadState();
+
+            if (!localStorage.getItem('welcomeMessageShown')) {
+                showModal({
+                    title: 'IMPORTANT MESSAGE',
+                    body: 'This application saves all data locally in your browser. No data is sent online. Please do not clear your browser history or cache for this site, as it will permanently delete all your election data. Use the "Export Data" feature to create backups.',
+                    cancelText: 'I Understand',
+                    onCancel: () => {
+                        localStorage.setItem('welcomeMessageShown', 'true');
+                    }
+                });
+            }
+
         } catch (error) {
             console.error(error);
-            // Error message is already shown on the screen
         }
     };
     
-    // Initialize the app
     initializeApp();
-    renderElectionForm(); // Set up the initial create election form and its button listener
+    renderElectionForm();
 
 });
 </script>
