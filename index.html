@@ -62,8 +62,49 @@
 
         <!-- Main Content Area -->
         <main id="main-content">
+            <!-- Homepage View -->
+            <div id="homepage-view" class="view active-view">
+                <div class="max-w-4xl mx-auto text-center py-12">
+                    <h1 class="text-5xl font-bold text-blue-600">Offline School Election System</h1>
+                    <p class="mt-4 text-xl text-gray-600">A simple, secure, and offline-first solution for conducting school elections.</p>
+                    <button id="goto-login-btn" class="mt-8 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full text-lg transition transform hover:scale-105">Admin Login</button>
+                </div>
+
+                <div class="max-w-5xl mx-auto grid md:grid-cols-3 gap-8 mt-10">
+                    <div class="bg-white p-6 rounded-xl shadow-md text-center">
+                        <svg class="w-12 h-12 mx-auto text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path></svg>
+                        <h3 class="text-xl font-bold mb-2 mt-4">Offline First</h3>
+                        <p class="text-gray-600">Works entirely in your browser. No internet needed after initial setup. All data is stored securely on your local machine.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-md text-center">
+                        <svg class="w-12 h-12 mx-auto text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <h3 class="text-xl font-bold mb-2 mt-4">Easy Data Import</h3>
+                        <p class="text-gray-600">Quickly upload all student data from a single, pre-formatted Excel file, saving you hours of manual entry.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-md text-center">
+                        <svg class="w-12 h-12 mx-auto text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        <h3 class="text-xl font-bold mb-2 mt-4">Secure & Controlled</h3>
+                        <p class="text-gray-600">Password-protected sections and a fullscreen, kiosk-style voting screen ensure a fair and distraction-free election process.</p>
+                    </div>
+                </div>
+                 <div class="max-w-5xl mx-auto mt-12 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-r-lg">
+                    <h3 class="font-bold">Important Notice</h3>
+                    <p>This application saves all data locally in your browser. Clearing your browser history or cache will permanently delete all your election data. Use the "Export Data" feature regularly to create backups.</p>
+                </div>
+                <div class="max-w-5xl mx-auto mt-12">
+                    <h2 class="text-3xl font-bold text-center mb-8">How It Works in 5 Simple Steps</h2>
+                    <div class="space-y-6">
+                        <div class="flex items-start space-x-4"><div class="flex-shrink-0 w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-xl">1</div><div><h4 class="font-bold text-lg">Setup</h4><p class="text-gray-600">Login, enter your school code, and upload your student list from the provided Excel template.</p></div></div>
+                        <div class="flex items-start space-x-4"><div class="flex-shrink-0 w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-xl">2</div><div><h4 class="font-bold text-lg">Create Election & Add Candidates</h4><p class="text-gray-600">Create a new election, set a password, and add candidates for each class, including their photos.</p></div></div>
+                        <div class="flex items-start space-x-4"><div class="flex-shrink-0 w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-xl">3</div><div><h4 class="font-bold text-lg">Vote</h4><p class="text-gray-600">On election day, start the voting for each class. The system enters a secure fullscreen mode for voters.</p></div></div>
+                        <div class="flex items-start space-x-4"><div class="flex-shrink-0 w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-xl">4</div><div><h4 class="font-bold text-lg">Count</h4><p class="text-gray-600">After voting is complete, watch the animated vote counting in real-time and see the winner announced.</p></div></div>
+                        <div class="flex items-start space-x-4"><div class="flex-shrink-0 w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-xl">5</div><div><h4 class="font-bold text-lg">Report & Backup</h4><p class="text-gray-600">Generate and download detailed PDF reports of the results. Export all your data for backup or to move to another computer.</p></div></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- STEP 1: Admin Login -->
-            <div id="login-view" class="view active-view max-w-md mx-auto bg-white p-8 rounded-xl shadow-md">
+            <div id="login-view" class="view max-w-md mx-auto bg-white p-8 rounded-xl shadow-md">
                 <h2 class="text-2xl font-bold text-center mb-6">Admin Login</h2>
                 <input id="admin-user" type="text" placeholder="Username" class="w-full p-3 mb-4 border rounded-lg" value="admin">
                 <input id="admin-pass" type="password" placeholder="Password" class="w-full p-3 mb-4 border rounded-lg" value="admin123">
@@ -314,7 +355,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     showView('school-setup-view');
                 }
+            } else {
+                showView('homepage-view');
             }
+        } else {
+            showView('homepage-view');
         }
     };
 
@@ -387,6 +432,11 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (document.msExitFullscreen) document.msExitFullscreen();
     };
     
+    // --- HOMEPAGE ---
+    document.getElementById('goto-login-btn').addEventListener('click', () => {
+        showView('login-view');
+    });
+
     // --- STEP 1: LOGIN ---
     document.getElementById('login-btn').addEventListener('click', () => {
         const user = document.getElementById('admin-user').value;
@@ -407,7 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     logoutButton.addEventListener('click', () => {
         appData.loggedIn = false;
-        showView('login-view');
+        showView('homepage-view');
         localStorage.removeItem('electionAppData');
         window.location.reload();
     });
@@ -1388,7 +1438,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 } else {
                     const gender = c.gender?.toLowerCase() || '';
-                    imageSrc = gender.startsWith('f') ? femaleIcon : maleIcon;
+                    const img = new Image();
+                    img.src = gender.startsWith('f') ? femaleIcon : maleIcon;
+                    await new Promise(resolve => {
+                       img.onload = () => {
+                           const canvas = document.createElement('canvas');
+                           canvas.width = img.width;
+                           canvas.height = img.height;
+                           const ctx = canvas.getContext('2d');
+                           ctx.drawImage(img, 0, 0);
+                           imageSrc = canvas.toDataURL('image/png');
+                           resolve();
+                       }
+                    });
                 }
                 tableData.push([{ content: '', image: imageSrc, width: 10 }, c.name, c.gender]);
             }
@@ -1670,3 +1732,4 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
+
