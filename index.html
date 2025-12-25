@@ -3,921 +3,1628 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>vElect - Pro Election Suite</title>
-    
-    <!-- Dependencies -->
+    <title>vElect - Election software</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Library for reading Excel files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Libraries for generating PDF reports -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <!-- Library for generating audio tones -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
-    
-    <!-- Cropper.js -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --slate-950: #020617;
-            --slate-900: #0f172a;
-            --slate-800: #1e293b;
-        }
-
-        body { 
-            font-family: 'Inter', sans-serif; 
-            scrollbar-gutter: stable;
-            background-color: var(--slate-950);
-            color: #f1f5f9;
-            overflow-x: hidden;
-        }
-
+        body { font-family: 'Inter', sans-serif; scrollbar-gutter: stable; }
         .view { display: none; animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         .active-view { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        @keyframes fadeIn { 
-            from { opacity: 0; transform: translateY(10px); } 
-            to { opacity: 1; transform: translateY(0); } 
-        }
-        
-        .modal-backdrop { 
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
-            background-color: rgba(0, 0, 0, 0.85); 
-            backdrop-filter: blur(12px); 
-            display: flex; justify-content: center; align-items: center; 
-            z-index: 1000; 
-        }
-        .modal-content { 
-            background-color: var(--slate-900); 
-            color: #f8fafc; 
-            padding: 2.5rem; 
-            border-radius: 2rem; 
-            border: 1px solid #1e293b; 
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); 
-            width: 95%; 
-            max-width: 680px; 
-            display: flex; 
-            flex-direction: column; 
-            max-height: 90vh; 
-        }
+        .modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.8); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background-color: #1e293b; color: #f8fafc; padding: 2rem; border-radius: 1rem; border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); width: 90%; max-width: 680px; display: flex; flex-direction: column; max-height: 90vh; }
         .modal-body { overflow-y: auto; padding-right: 0.5rem; }
         
-        .input-dark { 
-            background-color: #020617; 
-            border: 1px solid #334155; 
-            color: #f1f5f9; 
-            transition: all 0.2s ease;
-        }
-        .input-dark:focus { 
-            border-color: #3b82f6; 
-            outline: none; 
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); 
-        }
-
-        .counting-vote { 
-            animation: flyToCandidate 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; 
-            position: absolute; 
-            font-size: 3rem; 
-            z-index: 100; 
-            pointer-events: none; 
-        }
-        @keyframes flyToCandidate { 
-            0% { transform: scale(1) translateY(0); opacity: 1; } 
-            100% { transform: scale(2.5) translateY(-200px); opacity: 0; } 
-        }
-
-        #candidate-cards { 
-            display: grid; 
-            gap: 1.5rem; 
-            place-items: center; 
-            height: calc(100vh - 250px); 
-            padding: 1rem; 
-            overflow: hidden;
-        }
-        
-        .cropper-container { 
-            max-height: 400px; 
-            width: 100%; 
-            background: #000; 
-            overflow: hidden; 
-            border-radius: 1rem; 
-        }
-
-        ::-webkit-scrollbar { width: 6px; }
+        /* Custom Scrollbar for dark theme */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .counting-vote {
+            animation: flyToCandidate 0.8s ease-in-out forwards;
+            position: absolute;
+            font-size: 2.5rem;
+            z-index: 100;
+        }
+        @keyframes flyToCandidate {
+            0% { transform: scale(1) translateY(0); opacity: 1; }
+            100% { transform: scale(1.5) translateY(-100px); opacity: 0; }
+        }
+
+        .input-dark {
+            background-color: #0f172a;
+            border: 1px solid #334155;
+            color: #f1f5f9;
+            transition: border-color 0.2s;
+        }
+        .input-dark:focus {
+            border-color: #3b82f6;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        #candidate-cards {
+            display: grid;
+            gap: 1.5rem;
+            place-items: center;
+            height: calc(100vh - 220px);
+            padding: 1rem;
+        }
     </style>
 </head>
-<body>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
 
     <div id="app-container" class="container mx-auto p-4 max-w-7xl">
         <!-- Header -->
-        <header class="bg-slate-900/60 backdrop-blur-xl border border-slate-800 shadow-2xl rounded-[2rem] p-5 mb-10 flex justify-between items-center sticky top-6 z-50">
-            <div class="flex items-center space-x-4 cursor-pointer group" onclick="location.reload()">
-                <div class="bg-blue-600 p-2.5 rounded-xl shadow-lg">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <header class="bg-slate-900/50 backdrop-blur-md border border-slate-800 shadow-xl rounded-2xl p-4 mb-8 flex justify-between items-center sticky top-4 z-50">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 p-2 rounded-lg shadow-lg shadow-blue-900/20">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 </div>
-                <h1 id="header-title" class="text-xl font-black tracking-tighter text-white uppercase">vElect Portal</h1>
+                <h1 id="header-title" class="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400">vElect</h1>
             </div>
             <div id="header-buttons" class="flex items-center space-x-3">
-                <button id="instructions-btn" class="hidden bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-black py-2.5 px-6 rounded-xl border border-slate-700 transition-all uppercase tracking-widest">Guide</button>
-                <button id="logout-button" class="hidden bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white text-xs font-black py-2.5 px-6 rounded-xl border border-rose-500/20 transition-all">Logout</button>
+                <button id="instructions-btn" class="hidden bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-2 px-4 rounded-xl border border-slate-700 transition">Instructions</button>
+                <button id="logout-button" class="hidden bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2 px-4 rounded-xl shadow-lg shadow-rose-900/20 transition">Logout</button>
             </div>
         </header>
 
+        <!-- Main Content -->
         <main id="main-content">
-            <!-- 0. Homepage -->
+            <!-- Homepage View -->
             <div id="homepage-view" class="view active-view">
-                <div class="max-w-4xl mx-auto text-center py-20">
-                    <h1 class="text-7xl font-black text-white mb-6 leading-none tracking-tighter">Digital Voting. <br><span class="text-blue-500">Secured Offline.</span></h1>
-                    <p class="text-xl text-slate-400 leading-relaxed mb-12 max-w-2xl mx-auto">Conduct school elections with materialistic elegance and absolute data privacy.</p>
-                    <button id="goto-login-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-black py-5 px-16 rounded-[2rem] text-xl shadow-2xl shadow-blue-900/40 transition transform hover:-translate-y-1 active:scale-95 uppercase tracking-widest">Get Started</button>
+                <div class="max-w-4xl mx-auto text-center py-16">
+                    <h1 class="text-6xl font-extrabold text-white mb-6">Conduct Secure <span class="text-blue-500">School Elections</span></h1>
+                    <p class="text-xl text-slate-400 leading-relaxed mb-10">A materialism-inspired dark interface for local, secure, and fully offline digital voting.</p>
+                    <button id="goto-login-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-10 rounded-2xl text-lg shadow-2xl shadow-blue-900/40 transition transform hover:-translate-y-1">Admin Dashboard Login</button>
                 </div>
 
-                <div class="grid md:grid-cols-3 gap-8 mt-12">
-                    <div class="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800">
-                        <div class="text-blue-500 mb-6"><svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>
-                        <h3 class="text-xl font-black mb-2 text-white">Privacy First</h3>
-                        <p class="text-slate-400 text-sm">Every vote and portrait stays inside your browser's private database. No cloud, no leaks.</p>
+                <div class="grid md:grid-cols-3 gap-8 mt-10">
+                    <div class="bg-slate-900 p-8 rounded-2xl border border-slate-800 shadow-xl">
+                        <div class="bg-blue-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-6">
+                            <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">Offline Core</h3>
+                        <p class="text-slate-400 leading-relaxed">Runs entirely in-browser. Zero data is sent to external servers, ensuring absolute privacy.</p>
                     </div>
-                    <div class="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800">
-                        <div class="text-indigo-500 mb-6"><svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></div>
-                        <h3 class="text-xl font-black mb-2 text-white">Audit Trail</h3>
-                        <p class="text-slate-400 text-sm">Download signed PDF results with analytics and candidate photos automatically generated.</p>
+                    <div class="bg-slate-900 p-8 rounded-2xl border border-slate-800 shadow-xl">
+                        <div class="bg-indigo-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-6">
+                            <svg class="w-8 h-8 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">Instant Reports</h3>
+                        <p class="text-slate-400 leading-relaxed">Generate beautiful PDF reports with candidate photos and detailed vote analytics instantly.</p>
                     </div>
-                    <div class="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800">
-                        <div class="text-emerald-500 mb-6"><svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-1.428A9.99 9.99 0 0012 21a9.99 9.99 0 008.213-4.286M9 11V9a3 3 0 016 0v2m-6 5h6"></path></svg></div>
-                        <h3 class="text-xl font-black mb-2 text-white">Smart Booth</h3>
-                        <p class="text-slate-400 text-sm">Kiosk-mode voting screen adapts to any candidate count, ensuring no scrolling for voters.</p>
+                    <div class="bg-slate-900 p-8 rounded-2xl border border-slate-800 shadow-xl">
+                        <div class="bg-emerald-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-6">
+                            <svg class="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-1.428A9.99 9.99 0 0012 21a9.99 9.99 0 008.213-4.286M9 11V9a3 3 0 016 0v2m-6 5h6"></path></svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">Secure Flow</h3>
+                        <p class="text-slate-400 leading-relaxed">TAB-key advancement and ESC protection prevents unauthorized access during voting.</p>
                     </div>
-                </div>
-            </div>
-
-            <!-- 1. Login -->
-            <div id="login-view" class="view max-w-md mx-auto bg-slate-900 p-12 rounded-[3rem] border border-slate-800 shadow-2xl">
-                <h2 class="text-4xl font-black text-center mb-10 tracking-tight text-white">Admin Login</h2>
-                <div class="space-y-6">
-                    <input id="admin-user" type="text" placeholder="Username" class="w-full p-4 rounded-2xl input-dark text-lg font-bold" value="admin">
-                    <input id="admin-pass" type="password" placeholder="Password" class="w-full p-4 rounded-2xl input-dark text-lg font-bold" value="admin123">
-                    <button id="login-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-2xl shadow-xl transition-all">AUTHORIZE SESSION</button>
                 </div>
             </div>
 
-            <!-- 2. Institution Link -->
-            <div id="school-setup-view" class="view max-w-lg mx-auto bg-slate-900 p-12 rounded-[3rem] border border-slate-800 shadow-2xl">
-                <h2 class="text-4xl font-black mb-4 tracking-tight text-white text-center">Institution Setup</h2>
-                <p class="mb-10 text-slate-400 text-center font-medium leading-relaxed">Map your institution to the local database.</p>
-                <div class="space-y-6">
+            <!-- Login View -->
+            <div id="login-view" class="view max-w-md mx-auto bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-2xl">
+                <h2 class="text-3xl font-bold text-center mb-8">Admin Access</h2>
+                <div class="space-y-4">
+                    <input id="admin-user" type="text" placeholder="Username" class="w-full p-4 rounded-xl input-dark" value="admin">
+                    <input id="admin-pass" type="password" placeholder="Password" class="w-full p-4 rounded-xl input-dark" value="admin123">
+                    <button id="login-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-900/30 transition">Enter Portal</button>
+                </div>
+            </div>
+
+            <!-- School Setup View -->
+            <div id="school-setup-view" class="view max-w-lg mx-auto bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-2xl">
+                <h2 class="text-3xl font-bold mb-4">Institution Setup</h2>
+                <p class="mb-6 text-slate-400">Configure your school details to initialize the system.</p>
+                <div class="space-y-5">
                     <div>
-                        <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Institution Code (Optional)</label>
-                        <input id="school-code-input" type="text" placeholder="e.g. 42003" class="w-full p-4 rounded-2xl input-dark font-bold">
+                        <label class="block text-sm font-medium text-slate-400 mb-2">Institution Code (Optional)</label>
+                        <input id="school-code-input" type="text" placeholder="e.g. 42003" class="w-full p-4 rounded-xl input-dark">
                     </div>
                     <div>
-                        <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Institution Name <span class="text-blue-500">*</span></label>
-                        <input id="school-name-input" type="text" placeholder="e.g. Govt. Model School" class="w-full p-4 rounded-2xl input-dark font-bold">
+                        <label class="block text-sm font-medium text-slate-400 mb-2">Institution Name <span class="text-blue-500">*</span></label>
+                        <input id="school-name-input" type="text" placeholder="e.g. Govt. H S S Aruvikkara" class="w-full p-4 rounded-xl input-dark">
                     </div>
                 </div>
-                <button id="confirm-school-btn" class="w-full mt-12 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-5 rounded-2xl shadow-xl transition-all">INITIALIZE SUITE</button>
-                <button id="report-missing-school-btn" class="mt-8 w-full text-sm text-slate-500 hover:text-blue-400 transition font-bold underline decoration-slate-700">Missing from lookup?</button>
+                <button id="confirm-school-btn" class="w-full mt-8 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-900/20 transition">Initialize System</button>
+                <button id="report-missing-school-btn" class="mt-4 w-full text-sm text-slate-500 hover:text-blue-400 transition">Can't find your school in lookup?</button>
             </div>
 
-            <!-- 3. Admin Dashboard -->
+            <!-- Admin Dashboard View -->
             <div id="admin-dashboard-view" class="view">
-                <div class="flex items-end justify-between mb-12 border-b border-slate-800 pb-8">
-                    <div>
-                        <span class="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em]">Operational Unit</span>
-                        <h2 class="text-5xl font-black text-white tracking-tighter mt-2" id="dashboard-school-name"></h2>
-                    </div>
-                </div>
+                <h2 class="text-4xl font-bold mb-8 text-white" id="dashboard-school-name"></h2>
                 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <!-- Voters -->
-                    <div class="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col">
-                        <h3 class="text-xl font-black mb-8 flex items-center text-white"><span class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center mr-4 text-sm font-black text-white">1</span> POPULATION</h3>
-                        <p class="text-slate-400 text-sm mb-10 leading-relaxed flex-grow font-medium">Load your voter registry via Excel integration.</p>
-                        <div class="space-y-4">
-                            <input type="file" id="student-file-input" accept=".xlsx, .xls" class="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-6 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-blue-600/10 file:text-blue-400 hover:file:bg-blue-600/20 cursor-pointer"/>
-                            <button id="download-sample-btn" class="w-full bg-slate-950 hover:bg-slate-800 text-slate-300 font-black py-4 rounded-2xl border border-slate-800 transition shadow-inner">GET TEMPLATE</button>
-                        </div>
-                        <div id="student-data-status" class="mt-6 text-emerald-400 font-black text-[10px] uppercase tracking-widest text-center"></div>
+                    <!-- Student Data Section -->
+                    <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+                        <h3 class="text-xl font-bold mb-6 flex items-center"><span class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3 text-sm">1</span> Student Records</h3>
+                        <p class="text-slate-400 text-sm mb-6">Load your voters using a standard Excel sheet.</p>
+                        <input type="file" id="student-file-input" accept=".xlsx, .xls" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600/10 file:text-blue-400 hover:file:bg-blue-600/20 cursor-pointer"/>
+                        <button id="download-sample-btn" class="mt-4 w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2.5 rounded-xl border border-slate-700 transition">Template File</button>
+                        <div id="student-data-status" class="mt-4 text-emerald-400 font-medium text-sm"></div>
                     </div>
 
-                    <!-- Setup -->
-                    <div class="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl">
-                        <h3 id="election-form-title" class="text-xl font-black mb-8 flex items-center text-white"><span class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center mr-4 text-sm font-black text-white">2</span> SESSION</h3>
+                    <!-- Create Election Section -->
+                    <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+                        <h3 id="election-form-title" class="text-xl font-bold mb-6 flex items-center"><span class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center mr-3 text-sm">2</span> Define Election</h3>
                         <div class="space-y-4">
-                            <input id="election-name" type="text" placeholder="Election Title" class="w-full p-4 rounded-2xl input-dark font-bold">
-                            <input id="election-password" type="password" placeholder="Booth Security PIN" class="w-full p-4 rounded-2xl input-dark font-bold">
-                            <label class="flex items-center space-x-3 cursor-pointer bg-slate-950/80 p-4 rounded-2xl border border-slate-800 transition hover:border-slate-700">
-                                <input id="include-nota" type="checkbox" class="w-6 h-6 rounded-lg border-slate-700 bg-slate-950 text-blue-600 focus:ring-blue-600">
-                                <span class="text-sm text-slate-400 font-bold">Ballot NOTA Option</span>
+                            <input id="election-name" type="text" placeholder="Election Title" class="w-full p-3 rounded-xl input-dark">
+                            <div class="relative">
+                                <input id="election-password" type="password" placeholder="Access Password" class="w-full p-3 rounded-xl input-dark pr-12">
+                                <span id="toggle-password" class="absolute inset-y-0 right-0 pr-4 flex items-center cursor-pointer text-slate-500 hover:text-slate-300">
+                                    <svg id="eye-icon" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                    <svg id="eye-off-icon" class="h-6 w-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/></svg>
+                                </span>
+                            </div>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input id="include-nota" type="checkbox" class="w-5 h-5 rounded border-slate-700 bg-slate-950 text-blue-600 focus:ring-blue-600">
+                                <span class="text-sm text-slate-300">Include NOTA Option</span>
                             </label>
                             <div id="election-form-buttons">
-                                <button id="create-election-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl shadow-xl transition-all">INITIALIZE SESSION</button>
+                                <button id="create-election-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-900/20 transition">Create Election</button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Vault -->
-                    <div class="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col">
-                        <h3 class="text-xl font-black mb-8 text-white uppercase tracking-tighter">Existing Sessions</h3>
-                        <div id="election-list" class="space-y-4 overflow-y-auto max-h-[350px] pr-2"></div>
+                    <!-- Manage Elections List -->
+                    <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl overflow-hidden flex flex-col">
+                        <h3 class="text-xl font-bold mb-6">Existing Elections</h3>
+                        <div id="election-list" class="space-y-3 overflow-y-auto max-h-[300px] pr-2"></div>
                     </div>
                 </div>
 
                 <!-- Active Election Management -->
-                <div id="active-election-section" class="mt-16 space-y-12 hidden">
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                        <div class="bg-slate-900 p-10 rounded-[3rem] border border-slate-800">
-                            <h3 class="text-2xl font-black mb-10 flex items-center text-white"><span class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center mr-4 text-sm font-black text-white">3</span> NOMINATION</h3>
-                            <div class="space-y-6">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <select id="candidate-class-select" class="w-full p-4 rounded-2xl input-dark font-bold"></select>
-                                    <select id="candidate-name-select" class="w-full p-4 rounded-2xl input-dark font-bold"></select>
+                <div id="active-election-section" class="mt-12 space-y-8 hidden">
+                    <div class="flex items-center space-x-4 border-b border-slate-800 pb-4">
+                        <h2 class="text-2xl font-bold">Active: <span id="active-election-name" class="text-blue-400"></span></h2>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
+                            <h3 class="text-xl font-bold mb-6 flex items-center"><span class="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center mr-3 text-sm">3</span> Add Candidate</h3>
+                            <div class="space-y-4">
+                                <select id="candidate-class-select" class="w-full p-3 rounded-xl input-dark"></select>
+                                <select id="candidate-name-select" class="w-full p-3 rounded-xl input-dark"></select>
+                                <input id="candidate-gender" type="text" placeholder="Gender" class="w-full p-3 rounded-xl input-dark opacity-60" readonly>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-400 mb-2">Photo Upload</label>
+                                    <input type="file" id="candidate-image-input" accept="image/*" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600/10 file:text-blue-400 hover:file:bg-blue-600/20"/>
                                 </div>
-                                <input id="candidate-gender" type="text" placeholder="Gender Profile" class="w-full p-4 rounded-2xl input-dark opacity-40 font-bold" readonly>
-                                <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800">
-                                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Ballot Portrait</label>
-                                    <input type="file" id="candidate-image-input" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-6 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-blue-600/10 file:text-blue-400 hover:file:bg-blue-600/20 cursor-pointer"/>
-                                </div>
-                                <button id="add-candidate-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-5 rounded-2xl shadow-xl transition-all uppercase tracking-widest">Register Candidate</button>
+                                <button id="add-candidate-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition">Add to Ballot</button>
                             </div>
                         </div>
 
-                        <div class="bg-slate-900 p-10 rounded-[3rem] border border-slate-800">
-                            <h3 class="text-2xl font-black mb-10 text-white uppercase tracking-tighter">Live Ballot Data</h3>
-                            <div id="candidate-list" class="space-y-6 max-h-[500px] overflow-y-auto pr-3"></div>
+                        <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
+                            <h3 class="text-xl font-bold mb-6">Current Ballot</h3>
+                            <div id="candidate-list" class="space-y-4 max-h-[400px] overflow-y-auto pr-2"></div>
                         </div>
                     </div>
 
-                    <div class="bg-gradient-to-br from-blue-600/10 to-indigo-600/10 p-10 rounded-[3.5rem] border border-blue-500/20 shadow-2xl">
-                        <h3 class="text-2xl font-black mb-10 flex items-center text-white"><span class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center mr-4 text-sm font-black text-white">4</span> OPERATIONS</h3>
-                        <div class="grid sm:grid-cols-3 gap-8">
-                            <button id="goto-voting-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-black py-8 rounded-3xl transition shadow-2xl text-xl uppercase tracking-widest">Start Voting</button>
-                            <button id="goto-counting-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black py-8 rounded-3xl transition shadow-2xl text-xl uppercase tracking-widest">Begin Counting</button>
-                            <button id="goto-reports-btn" class="bg-slate-800 hover:bg-slate-700 text-white font-black py-8 rounded-3xl border border-slate-700 transition text-xl uppercase tracking-widest">Audit Reports</button>
+                    <div class="bg-slate-900 p-8 rounded-3xl border border-blue-900/30 shadow-2xl shadow-blue-900/10">
+                        <h3 class="text-xl font-bold mb-6 flex items-center"><span class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3 text-sm">4</span> Operational Controls</h3>
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <button id="goto-voting-btn" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl transition shadow-lg shadow-blue-900/20">Launch Voting View</button>
+                            <button id="goto-counting-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-2xl transition shadow-lg shadow-indigo-900/20">Start counting</button>
+                            <button id="goto-reports-btn" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-2xl transition border border-slate-700">Analytics & Reports</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Backup Utility -->
-                <div class="mt-16 bg-slate-900/20 p-10 rounded-[3rem] border-2 border-dashed border-slate-800 flex flex-col sm:flex-row items-center justify-center gap-6">
-                    <button id="export-data-btn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 py-3 px-10 rounded-2xl border border-slate-800 transition font-black">EXPORT VAULT (.json)</button>
-                    <label for="import-data-input" class="bg-slate-900 hover:bg-slate-800 text-slate-400 py-3 px-10 rounded-2xl border border-slate-800 transition font-black cursor-pointer">IMPORT RECOVERY FILE</label>
-                    <input type="file" id="import-data-input" class="hidden" accept=".json">
+                <!-- Backup and Restore -->
+                <div class="mt-12 bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
+                    <h3 class="text-xl font-bold mb-4">System Data Management</h3>
+                    <div class="grid sm:grid-cols-2 gap-4">
+                        <button id="export-data-btn" class="flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 py-3 px-6 rounded-xl border border-slate-700 transition">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4-4m4 4v12"></path></svg>
+                            Export Election Backup (.json)
+                        </button>
+                        <label for="import-data-input" class="flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 py-3 px-6 rounded-xl border border-slate-700 transition cursor-pointer">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            Restore Data from File
+                        </label>
+                        <input type="file" id="import-data-input" class="hidden" accept=".json">
+                    </div>
                 </div>
             </div>
             
-            <!-- Voting Hub -->
-            <div id="voting-class-selection-view" class="view p-10">
-                <div class="flex items-center justify-between mb-10">
-                    <h2 class="text-4xl font-black text-white">Election Hub</h2>
-                    <button onclick="showView('admin-dashboard-view')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 px-8 rounded-2xl border border-slate-700 transition font-black uppercase">Exit</button>
-                </div>
-                <div id="voter-selection-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 text-center"></div>
-            </div>
+            <!-- Voting Views -->
+            <div id="voting-class-selection-view" class="view"></div>
+            <div id="voting-screen-view" class="view" oncontextmenu="return false;"></div>
 
-            <!-- Booth View -->
-            <div id="voting-screen-view" class="view h-screen fixed inset-0 z-[100] bg-slate-950" oncontextmenu="return false;">
-                <div class="flex flex-col h-full">
-                    <div class="text-center py-10 bg-slate-900/50 border-b border-slate-800">
-                        <h2 id="booth-title" class="text-6xl font-black text-blue-400 mb-4 tracking-tighter uppercase"></h2>
-                        <p id="voter-counter" class="text-2xl text-slate-500 font-black tracking-widest uppercase"></p>
-                    </div>
-                    <div id="candidate-cards" class="flex-grow p-10 overflow-hidden"></div>
-                    <div class="py-6 text-center text-slate-700 font-black uppercase text-[10px] tracking-[1em]">vElect Secure Booth Terminal</div>
-                </div>
-                <!-- Success Flash -->
-                <div id="vote-cast-overlay" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col justify-center items-center text-white z-50">
-                    <div class="bg-emerald-500 rounded-full p-6 mb-8 shadow-2xl shadow-emerald-900/40">
-                        <svg class="w-20 h-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                    </div>
-                    <h2 class="text-6xl font-black mb-4 uppercase">Vote Recorded</h2>
-                    <p class="text-2xl text-slate-400 font-bold uppercase">Please leave the booth. System advancing...</p>
-                </div>
-            </div>
+            <!-- Counting Views -->
+            <div id="counting-class-selection-view" class="view"></div>
+            <div id="counting-screen-view" class="view"></div>
 
-            <!-- Tally Views -->
-            <div id="counting-class-selection-view" class="view p-10">
-                <div class="flex items-center justify-between mb-10">
-                    <h2 class="text-4xl font-black text-white">Tally Hub</h2>
-                    <button onclick="showView('admin-dashboard-view')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 px-8 rounded-2xl border border-slate-700 transition font-black uppercase">Exit</button>
-                </div>
-                <div id="counting-selection-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6"></div>
-            </div>
-
-            <div id="counting-screen-view" class="view h-screen fixed inset-0 z-[100] bg-slate-950 flex flex-col">
-                <div class="text-center py-10">
-                    <h2 id="counting-header" class="text-6xl font-black text-indigo-400 mb-2 tracking-tighter uppercase"></h2>
-                    <p id="counting-status" class="text-2xl text-slate-500 font-black uppercase"></p>
-                    <button id="begin-counting-btn" class="mt-8 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 px-16 rounded-2xl shadow-2xl transition transform hover:scale-105 uppercase tracking-widest">Commence Audit</button>
-                </div>
-                <div id="counting-candidate-list" class="flex-grow p-10 overflow-hidden"></div>
-            </div>
-
-            <!-- Intelligence View -->
-            <div id="reports-view" class="view p-10">
-                <div class="max-w-4xl mx-auto">
-                    <div class="flex items-center justify-between mb-12">
-                        <h2 class="text-4xl font-black text-white">Analytics Center</h2>
-                        <button onclick="showView('admin-dashboard-view')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 px-8 rounded-2xl border border-slate-700 transition font-black">EXIT</button>
-                    </div>
-                    <div class="bg-slate-900 p-12 rounded-[3.5rem] border border-slate-800 shadow-2xl text-center">
-                        <p class="text-slate-400 font-bold mb-10 uppercase tracking-widest">Signed Election Documentation</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                            <button id="report-candidates-btn" class="bg-slate-800 hover:bg-slate-700 text-white font-black py-8 rounded-3xl border border-slate-700 transition">BALLOT LIST</button>
-                            <button id="report-winners-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-black py-8 rounded-3xl transition shadow-xl">WINNERS LIST</button>
-                            <button id="report-detailed-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black py-8 rounded-3xl transition shadow-xl">FULL AUDIT</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+            <!-- Reports View -->
+            <div id="reports-view" class="view"></div>
         </main>
     </div>
 
-    <!-- UI Overlay: Crop Modal -->
-    <div id="crop-modal" class="modal-backdrop hidden">
-        <div class="modal-content max-w-xl">
-            <h3 class="text-2xl font-black mb-6 uppercase tracking-tight">Voter Identity Portrait</h3>
-            <div class="cropper-container"><img id="crop-image" src=""></div>
-            <div class="mt-10 flex justify-between items-center">
-                <p class="text-xs text-slate-500 font-bold uppercase tracking-widest">Adjust to fit square frame</p>
-                <div class="space-x-4">
-                    <button id="crop-cancel" class="bg-slate-800 px-8 py-3 rounded-xl font-bold border border-slate-700 transition hover:bg-slate-700">Cancel</button>
-                    <button id="crop-confirm" class="bg-blue-600 px-8 py-3 rounded-xl font-black shadow-xl transition hover:bg-blue-500">Apply Crop</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- UI Overlay: Dialog -->
+    <!-- Modals -->
     <div id="modal" class="modal-backdrop hidden">
-        <div class="modal-content">
-            <h3 id="modal-title" class="text-2xl font-black mb-4 uppercase"></h3>
-            <div id="modal-body" class="modal-body text-slate-300 font-medium"></div>
-            <div id="modal-footer" class="mt-10 flex justify-end space-x-4 pt-6 border-t border-slate-800/50">
-                <button id="modal-cancel-btn" class="bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 px-8 rounded-xl transition border border-slate-700 uppercase">Cancel</button>
-                <button id="modal-confirm-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-black py-3 px-8 rounded-xl shadow-lg transition uppercase">Confirm</button>
+        <div id="modal-content" class="modal-content">
+            <h3 id="modal-title" class="text-2xl font-bold mb-4"></h3>
+            <div id="modal-body" class="modal-body text-slate-300"></div>
+            <div id="modal-footer" class="mt-8 flex justify-end space-x-4">
+                <button id="modal-cancel-btn" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 px-6 rounded-xl transition">Cancel</button>
+                <button id="modal-confirm-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg shadow-blue-900/20 transition">Confirm</button>
             </div>
         </div>
     </div>
 
-    <!-- UI Overlay: Progress -->
     <div id="progress-modal" class="modal-backdrop hidden">
-        <div class="modal-content max-w-xs text-center">
-            <h3 id="progress-title" class="text-xl font-black mb-8 uppercase tracking-widest">Processing</h3>
-            <div class="w-full bg-slate-950 rounded-full h-2 border border-slate-800 mb-6 overflow-hidden">
-                <div id="progress-bar" class="bg-blue-500 h-full transition-all duration-300" style="width: 0%"></div>
+        <div class="modal-content max-w-sm">
+            <h3 id="progress-title" class="text-xl font-bold mb-6">Processing Data...</h3>
+            <div id="progress-body">
+                <p id="progress-text" class="text-center text-slate-400 mb-4 text-sm">Initializing...</p>
+                <div class="w-full bg-slate-950 rounded-full h-3">
+                    <div id="progress-bar" class="bg-blue-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p id="progress-eta" class="text-center text-xs text-slate-500 mt-4 italic"></p>
             </div>
-            <p id="progress-text" class="text-[10px] text-slate-500 font-black uppercase tracking-widest"></p>
         </div>
     </div>
+
 
 <script>
+// --- APP INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
-    // --- SYSTEM STATE ---
-    let appData = { school: null, students: [], classes: {}, elections: [], activeElectionId: null, currentVotingClass: null, currentVoterIndex: 0, loggedIn: false };
-    let schoolsData = [];
-    const femaleIcon = 'female.png';
-    const maleIcon = 'male.png';
 
-    // --- DOM CACHE ---
+    // --- STATE MANAGEMENT ---
+    let appData = {
+        school: null,
+        students: [],
+        classes: {},
+        elections: [],
+        activeElectionId: null,
+        currentVotingClass: null,
+        currentVoterIndex: 0,
+        loggedIn: false,
+    };
+
+    let schoolsData = [];
+
+    // --- DOM ELEMENTS ---
     const views = document.querySelectorAll('.view');
     const headerTitle = document.getElementById('header-title');
     const headerButtons = document.getElementById('header-buttons');
     const logoutButton = document.getElementById('logout-button');
     const instructionsButton = document.getElementById('instructions-btn');
+    const mainContent = document.getElementById('main-content');
+    
+    // --- DEFAULT IMAGES ---
+    const femaleIcon = 'female.png';
+    const maleIcon = 'male.png';
 
-    // --- STORAGE ENGINE (IndexedDB) ---
+    // --- IndexedDB HELPER ---
     const db = {
         instance: null,
-        async init() {
-            return new Promise((res, rej) => {
-                const req = indexedDB.open('ElectionDB', 4);
-                req.onupgradeneeded = (e) => {
-                    const d = e.target.result;
-                    if (!d.objectStoreNames.contains('candidate_images')) {
-                        d.createObjectStore('candidate_images', { keyPath: 'id' });
-                    }
+        init() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('ElectionDB', 1);
+                request.onupgradeneeded = (event) => {
+                    const dbInstance = event.target.result;
+                    dbInstance.createObjectStore('candidate_images', { keyPath: 'id' });
                 };
-                req.onsuccess = (e) => { this.instance = e.target.result; res(); };
-                req.onerror = (e) => rej(e.target.errorCode);
+                request.onsuccess = (event) => {
+                    this.instance = event.target.result;
+                    resolve();
+                };
+                request.onerror = (event) => {
+                    console.error("IndexedDB error:", event.target.errorCode);
+                    reject(event.target.errorCode);
+                };
             });
         },
-        async addImage(id, blob) {
-            const tx = this.instance.transaction(['candidate_images'], 'readwrite');
-            return new Promise((res, rej) => {
-                const req = tx.objectStore('candidate_images').put({ id, image: blob });
-                req.onsuccess = () => res();
-                req.onerror = () => rej();
+        addImage(id, imageFile) {
+            return new Promise((resolve, reject) => {
+                const transaction = this.instance.transaction(['candidate_images'], 'readwrite');
+                const store = transaction.objectStore('candidate_images');
+                const request = store.put({ id: id, image: imageFile });
+                request.onsuccess = () => resolve();
+                request.onerror = (event) => reject(event.target.error);
             });
         },
-        async getImage(id) {
-            return new Promise(res => {
-                const tx = this.instance.transaction(['candidate_images'], 'readonly');
-                const req = tx.objectStore('candidate_images').get(id);
-                req.onsuccess = () => res(req.result?.image);
-                req.onerror = () => res(null);
+        getImage(id) {
+            return new Promise((resolve, reject) => {
+                const transaction = this.instance.transaction(['candidate_images'], 'readonly');
+                const store = transaction.objectStore('candidate_images');
+                const request = store.get(id);
+                request.onsuccess = (event) => resolve(event.target.result?.image);
+                request.onerror = (event) => reject(event.target.error);
             });
         },
-        async deleteImage(id) {
-            this.instance.transaction(['candidate_images'], 'readwrite').objectStore('candidate_images').delete(id);
+        deleteImage(id) {
+            return new Promise((resolve, reject) => {
+                const transaction = this.instance.transaction(['candidate_images'], 'readwrite');
+                const store = transaction.objectStore('candidate_images');
+                const request = store.delete(id);
+                request.onsuccess = () => resolve();
+                request.onerror = (event) => reject(event.target.error);
+            });
         }
     };
 
-    // --- IMAGE HELPER ---
-    const convertToBase64 = (blobOrUrl) => {
-        return new Promise((resolve) => {
-            if (blobOrUrl instanceof Blob) {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.readAsDataURL(blobOrUrl);
+    // --- UTILITY FUNCTIONS ---
+    const saveState = () => {
+        try {
+            const stateToSave = { ...appData };
+            stateToSave.elections = appData.elections.map(election => {
+                const electionCopy = { ...election };
+                electionCopy.candidates = election.candidates.map(c => {
+                    const { image, ...rest } = c;
+                    return rest;
+                });
+                return electionCopy;
+            });
+            localStorage.setItem('electionAppData', JSON.stringify(stateToSave));
+        } catch (e) {
+            console.error("Error saving state:", e);
+            showModal({ title: 'Error', body: 'Could not save state. The browser storage might be full.', cancelText: 'OK' });
+        }
+    };
+
+    const loadState = () => {
+        const savedData = localStorage.getItem('electionAppData');
+        if (savedData) {
+            appData = JSON.parse(savedData);
+            if (!Array.isArray(appData.elections)) {
+                appData.elections = [];
+            }
+            if (appData.loggedIn) {
+                if(appData.school) {
+                    showView('admin-dashboard-view');
+                    renderAdminDashboard();
+                } else {
+                    showView('school-setup-view');
+                }
             } else {
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = img.width; canvas.height = img.height;
-                    canvas.getContext('2d').drawImage(img, 0, 0);
-                    resolve(canvas.toDataURL('image/png'));
+                showView('homepage-view');
+            }
+        } else {
+            showView('homepage-view');
+        }
+    };
+
+    const showView = (viewId) => {
+        views.forEach(v => v.classList.remove('active-view'));
+        const targetView = document.getElementById(viewId);
+        if (targetView) {
+            targetView.classList.add('active-view');
+            mainContent.appendChild(targetView);
+        }
+        const isLoggedIn = appData.loggedIn && viewId !== 'login-view';
+        logoutButton.classList.toggle('hidden', !isLoggedIn);
+        instructionsButton.classList.toggle('hidden', !isLoggedIn);
+        
+        headerButtons.classList.toggle('hidden', viewId === 'voting-screen-view' || viewId === 'counting-screen-view');
+        headerTitle.textContent = appData.school ? `${appData.school.name} Election` : 'School Election Portal';
+    };
+
+    const showModal = (config) => {
+        const { title, body, onConfirm, confirmText = 'Confirm', onCancel, cancelText = 'Cancel', requiresInput = false } = config;
+        document.getElementById('modal-title').textContent = title;
+        const modalBody = document.getElementById('modal-body');
+        modalBody.innerHTML = body;
+        if (requiresInput) {
+            modalBody.innerHTML += `<input type="password" id="modal-password-input" class="w-full p-3 mt-4 rounded-xl input-dark">`;
+        }
+
+        const confirmBtn = document.getElementById('modal-confirm-btn');
+        const cancelBtn = document.getElementById('modal-cancel-btn');
+        
+        confirmBtn.textContent = confirmText;
+        cancelBtn.textContent = cancelText;
+
+        if (onConfirm) {
+            confirmBtn.classList.remove('hidden');
+            confirmBtn.onclick = () => {
+                const input = document.getElementById('modal-password-input');
+                const inputValue = input ? input.value : null;
+                onConfirm(inputValue);
+                hideModal();
+            };
+        } else {
+            confirmBtn.classList.add('hidden');
+        }
+        
+        cancelBtn.onclick = () => {
+            if (onCancel) onCancel();
+            hideModal();
+        };
+
+        document.getElementById('modal').classList.remove('hidden');
+    };
+
+    const hideModal = () => document.getElementById('modal').classList.add('hidden');
+
+    const getActiveElection = () => appData.elections.find(e => e.id.toString() === appData.activeElectionId);
+
+    // --- FULLSCREEN API ---
+    const enterFullScreen = (element) => {
+        if (element.requestFullscreen) element.requestFullscreen();
+        else if (element.mozRequestFullScreen) element.mozRequestFullScreen();
+        else if (element.webkitRequestFullscreen) element.webkitRequestFullscreen();
+        else if (element.msRequestFullscreen) element.msRequestFullscreen();
+    };
+
+    const exitFullScreen = () => {
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        else if (document.msExitFullscreen) document.msExitFullscreen();
+    };
+    
+    // --- HOMEPAGE ---
+    document.getElementById('goto-login-btn').addEventListener('click', () => {
+        showView('login-view');
+    });
+
+    // --- STEP 1: LOGIN ---
+    document.getElementById('login-btn').addEventListener('click', () => {
+        const user = document.getElementById('admin-user').value;
+        const pass = document.getElementById('admin-pass').value;
+        if (user === 'admin' && pass === 'admin123') {
+            appData.loggedIn = true;
+            if (appData.school) {
+                showView('admin-dashboard-view');
+                renderAdminDashboard();
+            } else {
+                showView('school-setup-view');
+            }
+            saveState();
+        } else {
+            showModal({ title: 'Login Failed', body: 'Invalid username or password.', cancelText: 'OK' });
+        }
+    });
+    
+    logoutButton.addEventListener('click', () => {
+        appData.loggedIn = false;
+        showView('homepage-view');
+        localStorage.removeItem('electionAppData');
+        window.location.reload();
+    });
+
+    // --- STEP 2: SCHOOL SETUP ---
+    document.getElementById('school-code-input').addEventListener('input', (e) => {
+        const code = e.target.value.trim();
+        const schoolInfo = schoolsData.find(school => 
+            school.school_code === code || 
+            school.hss_code === code || 
+            school.vhse_code === code
+        );
+        if (schoolInfo) {
+            document.getElementById('school-name-input').value = schoolInfo.school_name;
+        }
+    });
+
+    document.getElementById('confirm-school-btn').addEventListener('click', () => {
+        const code = document.getElementById('school-code-input').value.trim();
+        const name = document.getElementById('school-name-input').value.trim();
+        
+        if (name) {
+            appData.school = { code: code || 'N/A', name: name };
+            saveState();
+            showView('admin-dashboard-view');
+            renderAdminDashboard();
+        } else {
+            showModal({ title: 'Error', body: 'Institution Name is compulsory. Please enter it to continue.', cancelText: 'OK' });
+        }
+    });
+
+    document.getElementById('report-missing-school-btn').addEventListener('click', () => {
+        const formHTML = `
+            <p class="mb-4">If your school is not listed, please fill out this form to request it be added.</p>
+            <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSevJGeya80M4LqgWQVs-9b56nNi1fThPgJNfP_9sVZ4_pT5Vw/viewform?embedded=true" 
+                width="100%" height="450" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>
+        `;
+        showModal({
+            title: 'Report Missing School',
+            body: formHTML,
+            cancelText: 'Close'
+        });
+    });
+
+    // --- STEP 3: STUDENT DATA ---
+    document.getElementById('student-file-input').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) startStudentProcessingWithWorker(file);
+    });
+
+    const startStudentProcessingWithWorker = (file) => {
+        document.getElementById('progress-modal').classList.remove('hidden');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const progressEta = document.getElementById('progress-eta');
+        
+        progressBar.style.width = '0%';
+        progressText.textContent = 'Preparing to read file...';
+        progressEta.textContent = 'Calculating time remaining...';
+
+        const workerCode = `
+            self.onmessage = function(e) {
+                const { file, xlsxURL } = e.data;
+                importScripts(xlsxURL);
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    try {
+                        const data = new Uint8Array(event.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        const rawStudents = XLSX.utils.sheet_to_json(worksheet);
+
+                        const students = rawStudents.map(row => {
+                            const normalizedRow = {};
+                            for (const key in row) {
+                                if (Object.prototype.hasOwnProperty.call(row, key)) {
+                                    normalizedRow[key.trim().toLowerCase()] = row[key];
+                                }
+                            }
+                            return normalizedRow;
+                        }).filter(row => row.class && row.name);
+
+                        const totalCount = students.length;
+                        let processedCount = 0;
+                        const classes = {};
+                        const studentList = [];
+
+                        for (const s of students) {
+                            const studentRecord = { ...s, class: s.class.toString().trim() };
+                            studentList.push(studentRecord);
+                            const className = studentRecord.class;
+                            if (!classes[className]) classes[className] = [];
+                            classes[className].push(studentRecord);
+                            processedCount++;
+                            if (processedCount % 10 === 0 || processedCount === totalCount) {
+                                self.postMessage({ type: 'progress', processed: processedCount, total: totalCount });
+                            }
+                        }
+                        self.postMessage({ type: 'done', students: studentList, classes: classes });
+                    } catch (error) {
+                        self.postMessage({ type: 'error', message: error.message });
+                    }
                 };
-                img.onerror = () => resolve(null);
-                img.src = blobOrUrl;
+                reader.readAsArrayBuffer(file);
+            };
+        `;
+
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        const worker = new Worker(URL.createObjectURL(blob));
+        const startTime = Date.now();
+
+        worker.onmessage = (e) => {
+            const { type, processed, total, students, classes, message } = e.data;
+            if (type === 'progress') {
+                const percentage = total > 0 ? (processed / total) * 100 : 0;
+                progressBar.style.width = `${percentage}%`;
+                progressText.textContent = `Processed ${processed} of ${total} students...`;
+                if (processed > 0) {
+                    const elapsedTime = Date.now() - startTime;
+                    const timePerStudent = elapsedTime / processed;
+                    const remainingStudents = total - processed;
+                    const etaMs = remainingStudents * timePerStudent;
+                    const etaSeconds = Math.round(etaMs / 1000);
+                    progressEta.textContent = `Estimated time remaining: ${etaSeconds} seconds`;
+                }
+            } else if (type === 'done') {
+                appData.students = students;
+                appData.classes = classes;
+                document.getElementById('progress-modal').classList.add('hidden');
+                saveState();
+                renderAdminDashboard();
+                const classList = Object.keys(appData.classes).sort().join(', ');
+                showModal({
+                    title: "Import Success",
+                    body: `<p><strong>Total Students:</strong> ${appData.students.length}</p><p><strong>Total Classes:</strong> ${Object.keys(appData.classes).length}</p>`,
+                    cancelText: 'OK'
+                });
+                worker.terminate();
+            } else if (type === 'error') {
+                showModal({ title: 'Error', body: 'Processing failed: ' + message, cancelText: 'OK' });
+                document.getElementById('progress-modal').classList.add('hidden');
+                worker.terminate();
+            }
+        };
+        worker.postMessage({ file: file, xlsxURL: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js' });
+    };
+
+    // --- STEP 4: ELECTION MANAGEMENT ---
+    const renderElectionForm = (election = null) => {
+        const isEditing = !!election;
+        document.getElementById('election-form-title').textContent = isEditing ? 'Update Election' : '2. Create Election';
+        document.getElementById('election-name').value = isEditing ? election.name : '';
+        document.getElementById('election-password').value = isEditing ? election.password : '';
+        document.getElementById('include-nota').checked = isEditing ? election.includeNota : false;
+
+        const buttonsContainer = document.getElementById('election-form-buttons');
+        if (isEditing) {
+            buttonsContainer.innerHTML = `
+                <button id="update-election-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl transition mb-2">Update Election</button>
+                <button id="cancel-update-btn" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl border border-slate-700 transition">Cancel</button>
+            `;
+            document.getElementById('update-election-btn').onclick = () => updateElection(election.id);
+            document.getElementById('cancel-update-btn').onclick = () => renderElectionForm();
+        } else {
+            buttonsContainer.innerHTML = `<button id="create-election-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition">Create Election</button>`;
+            document.getElementById('create-election-btn').onclick = createElection;
+        }
+    };
+
+    const createElection = () => {
+        const name = document.getElementById('election-name').value.trim();
+        const password = document.getElementById('election-password').value.trim();
+        const includeNota = document.getElementById('include-nota').checked;
+        if (name && password) {
+            appData.elections.push({
+                id: Date.now().toString(),
+                name,
+                password,
+                includeNota,
+                candidates: [],
+                votes: {},
+                classStatus: {}
+            });
+            saveState();
+            renderAdminDashboard();
+            renderElectionForm();
+        } else {
+            showModal({ title: 'Error', body: 'Please provide both an election name and a password.', cancelText: 'OK' });
+        }
+    };
+
+    const updateElection = (electionId) => {
+        const election = appData.elections.find(e => e.id === electionId);
+        if (election) {
+            election.name = document.getElementById('election-name').value.trim();
+            election.password = document.getElementById('election-password').value.trim();
+            election.includeNota = document.getElementById('include-nota').checked;
+            saveState();
+            renderAdminDashboard();
+            renderElectionForm();
+        }
+    };
+
+    const deleteElection = (electionId) => {
+        const election = appData.elections.find(e => e.id === electionId);
+        const isVotingStarted = Object.values(election.classStatus).some(s => s.status === 'voted' || s.status === 'counted');
+        if (isVotingStarted) {
+            showModal({ title: 'Restricted', body: 'Cannot delete an election after voting has started.', cancelText: 'OK' });
+            return;
+        }
+        showModal({
+            title: 'Delete Election?',
+            body: `Are you sure you want to delete the election "${election.name}"? This action cannot be undone.`,
+            confirmText: 'Delete',
+            onConfirm: () => {
+                appData.elections = appData.elections.filter(e => e.id !== electionId);
+                if (appData.activeElectionId === electionId) {
+                    appData.activeElectionId = null;
+                }
+                saveState();
+                renderAdminDashboard();
             }
         });
     };
 
-    // --- UI LOGIC ---
-    const showView = (id) => {
-        views.forEach(v => v.classList.remove('active-view'));
-        document.getElementById(id).classList.add('active-view');
-        
-        const isAuth = appData.loggedIn && !['homepage-view', 'login-view'].includes(id);
-        const hideChrome = ['voting-screen-view', 'counting-screen-view'].includes(id);
-        
-        logoutButton.classList.toggle('hidden', !isAuth);
-        instructionsButton.classList.toggle('hidden', !isAuth);
-        headerButtons.classList.toggle('hidden', hideChrome);
-        headerTitle.textContent = appData.school ? appData.school.name : 'vElect';
+    const selectElection = (electionId) => {
+        appData.activeElectionId = electionId;
+        saveState();
+        renderAdminDashboard();
     };
 
-    const saveState = () => {
-        const copy = { ...appData };
-        copy.elections = appData.elections.map(el => {
-            const elCopy = { ...el };
-            elCopy.candidates = el.candidates.map(c => { const { image, ...rest } = c; return rest; });
-            return elCopy;
+    // --- STEP 5: CANDIDATE MANAGEMENT ---
+    const populateClassSelect = () => {
+        const select = document.getElementById('candidate-class-select');
+        select.innerHTML = '<option>Select a class</option>';
+        Object.keys(appData.classes).sort().forEach(className => {
+            select.innerHTML += `<option value="${className}">${className}</option>`;
         });
-        localStorage.setItem('electionAppData', JSON.stringify(copy));
     };
 
-    const loadState = () => {
-        const saved = localStorage.getItem('electionAppData');
-        if (saved) {
-            appData = JSON.parse(saved);
-            if (!Array.isArray(appData.elections)) appData.elections = [];
-            if (appData.loggedIn && appData.school) { showView('admin-dashboard-view'); renderAdminDashboard(); }
-            else if (appData.loggedIn) showView('school-setup-view');
-            else showView('homepage-view');
-        }
-    };
-
-    const showModal = (cfg) => {
-        const { title, body, onConfirm, confirmText = 'Confirm', onCancel, cancelText = 'Cancel', requiresInput = false } = cfg;
-        document.getElementById('modal-title').textContent = title;
-        document.getElementById('modal-body').innerHTML = body;
-        if (requiresInput) document.getElementById('modal-body').innerHTML += `<input type="password" id="modal-password-input" class="w-full p-4 mt-4 rounded-2xl input-dark text-center font-black text-4xl tracking-[0.5em]">`;
-        const cBtn = document.getElementById('modal-confirm-btn');
-        const xBtn = document.getElementById('modal-cancel-btn');
-        cBtn.textContent = confirmText; xBtn.textContent = cancelText;
-        if (onConfirm) {
-            cBtn.classList.remove('hidden');
-            cBtn.onclick = () => { onConfirm(document.getElementById('modal-password-input')?.value); document.getElementById('modal').classList.add('hidden'); };
-        } else cBtn.classList.add('hidden');
-        xBtn.onclick = () => { if (onCancel) onCancel(); document.getElementById('modal').classList.add('hidden'); };
-        document.getElementById('modal').classList.remove('hidden');
-    };
-
-    const getActiveElection = () => appData.elections.find(e => e.id === appData.activeElectionId);
-
-    // --- CROPPER CONTROLLER ---
-    let cropperInstance = null;
-    document.getElementById('candidate-image-input').onchange = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            document.getElementById('crop-image').src = ev.target.result;
-            document.getElementById('crop-modal').classList.remove('hidden');
-            if (cropperInstance) cropperInstance.destroy();
-            cropperInstance = new Cropper(document.getElementById('crop-image'), { 
-                aspectRatio: 1, viewMode: 1, autoCropArea: 1, dragMode: 'move', background: false 
+    document.getElementById('candidate-class-select').addEventListener('change', (e) => {
+        const className = e.target.value;
+        const nameSelect = document.getElementById('candidate-name-select');
+        nameSelect.innerHTML = '<option>Select a student</option>';
+        if (appData.classes[className]) {
+            const sortedStudents = [...appData.classes[className]].sort((a, b) => {
+                const aGender = a.gender?.toLowerCase() || 'z';
+                const bGender = b.gender?.toLowerCase() || 'z';
+                if (aGender.startsWith('f') && !bGender.startsWith('f')) return -1;
+                if (!aGender.startsWith('f') && bGender.startsWith('f')) return 1;
+                return a.name.localeCompare(b.name);
             });
+            sortedStudents.forEach(student => {
+                nameSelect.innerHTML += `<option value="${student.name}">${student.name}</option>`;
+            });
+        }
+    });
+
+    document.getElementById('candidate-name-select').addEventListener('change', (e) => {
+        const studentName = e.target.value;
+        const className = document.getElementById('candidate-class-select').value;
+        const student = appData.classes[className]?.find(s => s.name === studentName);
+        document.getElementById('candidate-gender').value = student ? student.gender : '';
+    });
+
+    document.getElementById('add-candidate-btn').addEventListener('click', async () => {
+        const election = getActiveElection();
+        const className = document.getElementById('candidate-class-select').value;
+        const name = document.getElementById('candidate-name-select').value;
+        const gender = document.getElementById('candidate-gender').value;
+        const imageFile = document.getElementById('candidate-image-input').files[0];
+
+        if (!election) { showModal({ title: 'Error', body: 'Select an active election first.', cancelText: 'OK' }); return; }
+        if (className === 'Select a class' || name === 'Select a student') {
+            showModal({ title: 'Error', body: 'Please fill all candidate details.', cancelText: 'OK' });
+            return;
+        }
+
+        const newCandidate = {
+            id: Date.now().toString(),
+            name,
+            class: className,
+            gender,
+            hasImage: !!imageFile
         };
-        reader.readAsDataURL(file);
-    };
 
-    document.getElementById('crop-confirm').onclick = () => {
-        const election = getActiveElection();
-        if(!election) return;
-        cropperInstance.getCroppedCanvas({ width: 512, height: 512 }).toBlob(async (blob) => {
-            const id = Date.now().toString();
-            const n = document.getElementById('candidate-name-select').value;
-            const c = document.getElementById('candidate-class-select').value;
-            const g = document.getElementById('candidate-gender').value;
-            await db.addImage(id, blob);
-            election.candidates.push({ id, name: n, class: c, gender: g, hasImage: true });
-            saveState(); renderCandidateList();
-            document.getElementById('crop-modal').classList.add('hidden');
-            document.getElementById('candidate-image-input').value = null;
-        }, 'image/jpeg', 0.9);
-    };
-
-    document.getElementById('crop-cancel').onclick = () => {
-        document.getElementById('crop-modal').classList.add('hidden');
-        document.getElementById('candidate-image-input').value = null;
-    };
-
-    // --- DASHBOARD HANDLERS ---
-    document.getElementById('goto-login-btn').onclick = () => showView('login-view');
-    document.getElementById('login-btn').onclick = () => {
-        const u = document.getElementById('admin-user').value;
-        const p = document.getElementById('admin-pass').value;
-        if(u === 'admin' && p === 'admin123') {
-            appData.loggedIn = true;
-            if(appData.school) { showView('admin-dashboard-view'); renderAdminDashboard(); }
-            else showView('school-setup-view');
+        try {
+            if (imageFile) {
+                await db.addImage(newCandidate.id, imageFile);
+            }
+            election.candidates.push(newCandidate);
             saveState();
-        } else showModal({ title: 'Access Denied', body: 'Invalid administrator credentials.', cancelText: 'Retry' });
-    };
+            showModal({ title: 'Candidate Added', body: `${name} is now on the ballot for ${className}.`, cancelText: 'OK' });
+            renderCandidateList();
+            document.getElementById('candidate-class-select').value = 'Select a class';
+            document.getElementById('candidate-name-select').innerHTML = '<option>Select a student</option>';
+            document.getElementById('candidate-gender').value = '';
+            document.getElementById('candidate-image-input').value = null;
+        } catch (error) {
+            console.error("Failed to add candidate image to DB:", error);
+            showModal({ title: 'Storage Error', body: 'Could not save candidate image. The database might be full.', cancelText: 'OK' });
+        }
+    });
 
-    document.getElementById('confirm-school-btn').onclick = () => {
-        const n = document.getElementById('school-name-input').value.trim();
-        const c = document.getElementById('school-code-input').value.trim();
-        if(n) { appData.school = { code: c || 'N/A', name: n }; saveState(); showView('admin-dashboard-view'); renderAdminDashboard(); }
-        else showModal({ title: 'Validation Error', body: 'Institution name is compulsory.', cancelText: 'OK' });
-    };
-
-    document.getElementById('create-election-btn').onclick = () => {
-        const n = document.getElementById('election-name').value.trim();
-        const p = document.getElementById('election-password').value.trim();
-        const i = document.getElementById('include-nota').checked;
-        if(n && p) {
-            appData.elections.push({ id: Date.now().toString(), name: n, password: p, includeNota: i, candidates: [], votes: {}, classStatus: {} });
-            saveState(); renderAdminDashboard();
-            document.getElementById('election-name').value = ''; document.getElementById('election-password').value = '';
-        } else showModal({ title: 'Validation Error', body: 'Name and PIN are required.', cancelText: 'OK' });
-    };
-
-    document.getElementById('download-sample-btn').onclick = () => {
-        const ws = XLSX.utils.json_to_sheet([{name: 'John Doe', class: '10-A', gender: 'Male'}]);
-        const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Voters");
-        XLSX.writeFile(wb, "vElect_Template.xlsx");
-    };
-
-    document.getElementById('add-candidate-btn').onclick = () => {
+    const deleteCandidate = async (candidateId) => {
         const election = getActiveElection();
-        const n = document.getElementById('candidate-name-select').value;
-        const c = document.getElementById('candidate-class-select').value;
-        const g = document.getElementById('candidate-gender').value;
-        if(!n || !c) return showModal({ title: 'Error', body: 'Selection incomplete.', cancelText: 'OK' });
-        
-        if (document.getElementById('candidate-image-input').files.length === 0) {
-            const id = Date.now().toString();
-            election.candidates.push({ id, name: n, class: c, gender: g, hasImage: false });
-            saveState(); renderCandidateList();
-            showModal({ title: 'Registered', body: `${n} added without photo.`, cancelText: 'OK' });
+        const candidate = election.candidates.find(c => c.id === candidateId);
+        const classStatus = election.classStatus[candidate.class]?.status;
+
+        if (classStatus === 'voted' || classStatus === 'counted') {
+            showModal({ title: 'Restricted', body: `Cannot delete candidate from Class ${candidate.class} as voting has already started.`, cancelText: 'OK' });
+            return;
+        }
+
+        showModal({
+            title: 'Delete Candidate?',
+            body: `Are you sure you want to remove ${candidate.name} from the ballot?`,
+            confirmText: 'Remove',
+            onConfirm: async () => {
+                try {
+                    if (candidate.hasImage) {
+                        await db.deleteImage(candidateId);
+                    }
+                    election.candidates = election.candidates.filter(c => c.id !== candidateId);
+                    saveState();
+                    renderCandidateList();
+                } catch (error) {
+                    showModal({ title: 'Error', body: 'Failed to delete data from storage.', cancelText: 'OK' });
+                }
+            }
+        });
+    };
+
+    // --- RENDER FUNCTIONS ---
+    const renderAdminDashboard = () => {
+        document.getElementById('dashboard-school-name').textContent = `Dashboard: ${appData.school.name}`;
+        if (appData.students.length > 0) {
+            document.getElementById('student-data-status').textContent = `${appData.students.length} students loaded.`;
+            populateClassSelect();
+        }
+        renderElectionList();
+        const activeElection = getActiveElection();
+        const activeSection = document.getElementById('active-election-section');
+        if (activeElection) {
+            activeSection.classList.remove('hidden');
+            document.getElementById('active-election-name').textContent = activeElection.name;
+            renderCandidateList();
+        } else {
+            activeSection.classList.add('hidden');
         }
     };
 
-    document.getElementById('logout-button').onclick = () => {
-        appData.loggedIn = false; saveState(); window.location.reload();
-    };
-
-    // --- VOTING LOGIC ---
-    document.getElementById('goto-voting-btn').onclick = () => {
-        const el = getActiveElection();
-        const grid = document.getElementById('voter-selection-grid');
-        grid.innerHTML = Object.keys(appData.classes).sort().map(cls => {
-            const isDone = el.classStatus[cls]?.status === 'voted' || el.classStatus[cls]?.status === 'counted';
-            return `<button class="p-8 rounded-[2rem] font-black text-xl border-2 transition-all transform hover:scale-105 ${isDone ? 'bg-slate-900 border-slate-800 text-slate-600' : 'bg-blue-600 border-blue-500 text-white shadow-xl shadow-blue-900/30'}" onclick="initBooth('${cls}')">${cls}${isDone ? '<br><span class="text-[10px] opacity-40">CLOSED</span>' : ''}</button>`;
-        }).join('');
-        showView('voting-class-selection-view');
-    };
-
-    window.initBooth = (cls) => {
-        const el = getActiveElection();
-        if(el.classStatus[cls]?.status === 'voted') return showModal({ title: 'Access Denied', body: 'Booth session for this class is finalized.', cancelText: 'OK' });
-        showModal({ title: `Booth Access: ${cls}`, body: 'Enter PIN to authorize terminal.', requiresInput: true, onConfirm: (pin) => {
-            if(pin === el.password) {
-                appData.currentVotingClass = cls; appData.currentVoterIndex = 0;
-                if(!el.votes[cls]) el.votes[cls] = [];
-                renderVotingScreen(); showView('voting-screen-view'); enterFullScreen(document.documentElement);
-            } else showModal({ title: 'Invalid PIN', body: 'Unauthorized entry.', cancelText: 'Retry' });
-        }});
-    };
-
-    async function renderVotingScreen() {
-        const el = getActiveElection();
-        const cls = appData.currentVotingClass;
-        const voters = appData.classes[cls];
-        const candidates = el.candidates.filter(c => c.class === cls);
-        const totalCards = candidates.length + (el.includeNota ? 1 : 0);
-        
-        let cols = totalCards > 9 ? 'grid-cols-5' : totalCards > 4 ? 'grid-cols-3' : 'grid-cols-2';
-        document.getElementById('booth-title').textContent = `${cls} SESSION`;
-        document.getElementById('voter-counter').textContent = `Sequence: ${appData.currentVoterIndex + 1} / ${voters.length}`;
-        
-        const cardCont = document.getElementById('candidate-cards');
-        cardCont.className = `grid ${cols} gap-6 max-w-6xl mx-auto items-center`;
-        
-        let html = candidates.map(c => `
-            <div class="bg-slate-900 border-4 border-slate-800 p-8 rounded-[3rem] text-center cursor-pointer transition transform hover:scale-105 hover:border-blue-500 group" onclick="castVote('${c.id}')">
-                <img id="ballot-img-${c.id}" src="" class="w-32 h-32 md:w-48 md:h-48 rounded-full mx-auto mb-6 object-cover border-4 border-slate-800 bg-slate-800">
-                <h3 class="text-3xl font-black text-white group-hover:text-blue-400 truncate">${c.name}</h3>
+    const renderElectionList = () => {
+        const listContainer = document.getElementById('election-list');
+        if (appData.elections.length === 0) {
+            listContainer.innerHTML = '<p class="text-slate-500 text-sm italic">No elections created.</p>';
+            return;
+        }
+        listContainer.innerHTML = appData.elections.map(election => `
+            <div class="flex items-center justify-between p-3 rounded-xl ${appData.activeElectionId === election.id ? 'bg-blue-600/20 border border-blue-500/50' : 'bg-slate-950 border border-slate-800'}">
+                <span class="font-semibold text-sm truncate mr-2">${election.name}</span>
+                <div class="flex space-x-1">
+                    <button class="select-election-btn text-xs py-1.5 px-3 rounded-lg ${appData.activeElectionId === election.id ? 'bg-blue-600 text-white cursor-not-allowed' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'}" data-id="${election.id}" ${appData.activeElectionId === election.id ? 'disabled' : ''}>${appData.activeElectionId === election.id ? 'Active' : 'Select'}</button>
+                    <button class="edit-election-btn p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700" data-id="${election.id}" title="Edit"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
+                    <button class="delete-election-btn p-1.5 rounded-lg bg-slate-800 hover:bg-rose-900/30 text-rose-500 border border-slate-700 hover:border-rose-900/50" data-id="${election.id}" title="Delete"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                </div>
             </div>
         `).join('');
-        
-        if (el.includeNota) {
-            html += `<div class="bg-slate-900 border-4 border-slate-800 p-8 rounded-[3rem] text-center cursor-pointer transition transform hover:scale-105 hover:border-slate-500 group" onclick="castVote('NOTA')">
-                <div class="w-32 h-32 md:w-48 md:h-48 rounded-full mx-auto mb-6 bg-slate-800 flex items-center justify-center border-4 border-slate-700 text-slate-600"><svg class="w-24 h-24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg></div>
-                <h3 class="text-3xl font-black text-slate-500 group-hover:text-slate-400">NOTA</h3>
-            </div>`;
-        }
-        cardCont.innerHTML = html;
 
-        for(const c of candidates) {
-            const img = document.getElementById(`ballot-img-${c.id}`);
-            if(c.hasImage) {
-                const b = await db.getImage(c.id);
-                if(b) img.src = URL.createObjectURL(b);
-            } else img.src = c.gender.toLowerCase().startsWith('f') ? femaleIcon : maleIcon;
-        }
-    }
-
-    window.castVote = (cid) => {
-        const el = getActiveElection();
-        new Tone.Synth().toDestination().triggerAttackRelease("C4", "8n");
-        el.votes[appData.currentVotingClass].push({ voter: appData.currentVoterIndex, cid });
-        saveState();
-        document.getElementById('vote-cast-overlay').classList.remove('hidden');
+        listContainer.querySelectorAll('.select-election-btn').forEach(b => b.onclick = (e) => selectElection(e.target.dataset.id));
+        listContainer.querySelectorAll('.edit-election-btn').forEach(b => b.onclick = (e) => renderElectionForm(appData.elections.find(el => el.id.toString() === e.currentTarget.dataset.id)));
+        listContainer.querySelectorAll('.delete-election-btn').forEach(b => b.onclick = (e) => deleteElection(e.currentTarget.dataset.id));
     };
 
-    // --- COUNTING LOGIC ---
-    document.getElementById('goto-counting-btn').onclick = () => {
-        const el = getActiveElection();
-        const grid = document.getElementById('counting-selection-grid');
-        grid.innerHTML = Object.keys(appData.classes).sort().map(cls => {
-            const status = el.classStatus[cls]?.status;
-            const active = status === 'voted';
-            const done = status === 'counted';
-            return `<button class="p-8 rounded-[2rem] font-black text-xl border-2 transition-all transform hover:scale-105 ${active ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl shadow-indigo-900/30' : 'bg-slate-900 border-slate-800 text-slate-600'}" onclick="initCount('${cls}')">${cls}${done ? '<br><span class="text-[10px] opacity-40 uppercase">CERTIFIED</span>' : ''}</button>`;
-        }).join('');
-        showView('counting-class-selection-view');
-    };
+    const renderCandidateList = () => {
+        const election = getActiveElection();
+        const listContainer = document.getElementById('candidate-list');
+        if (!election || election.candidates.length === 0) {
+            listContainer.innerHTML = '<p class="text-slate-500 text-sm italic">No candidates added.</p>';
+            return;
+        }
 
-    window.initCount = (cls) => {
-        const el = getActiveElection();
-        if(el.classStatus[cls]?.status !== 'voted') return showModal({ title: 'Unavailable', body: 'Voting must be closed for this class first.', cancelText: 'OK' });
-        
-        document.getElementById('counting-header').textContent = `TALLY: ${cls}`;
-        document.getElementById('counting-status').textContent = 'READY FOR AUDIT';
-        
-        const candidates = el.candidates.filter(c => c.class === cls);
-        const totalItems = candidates.length + (el.includeNota ? 1 : 0);
-        let cols = totalItems > 9 ? 'grid-cols-5' : totalItems > 4 ? 'grid-cols-3' : 'grid-cols-2';
-        
-        const list = document.getElementById('counting-candidate-list');
-        list.className = `grid ${cols} gap-6 max-w-7xl mx-auto p-10`;
-        list.innerHTML = candidates.map(c => `
-            <div class="candidate-result-item flex flex-col items-center bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800" data-cid="${c.id}" data-votes="0">
-                <img id="count-img-${c.id}" src="" class="w-24 h-24 rounded-full mb-6 object-cover border-4 border-slate-800">
-                <p class="font-black text-white text-lg mb-4 text-center truncate w-full">${c.name}</p>
-                <div class="w-full bg-slate-950 h-2.5 rounded-full mb-6 overflow-hidden"><div class="progress-bar bg-indigo-500 h-full transition-all duration-300 shadow-[0_0_10px_rgba(99,102,241,0.5)]" style="width: 0%"></div></div>
-                <p class="text-6xl font-black text-indigo-400 tally-num">0</p>
+        const candidatesByClass = election.candidates.reduce((acc, c) => {
+            if (!acc[c.class]) acc[c.class] = [];
+            acc[c.class].push(c);
+            return acc;
+        }, {});
+
+        listContainer.innerHTML = Object.keys(candidatesByClass).sort().map(className => `
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                <h4 class="font-bold text-blue-400 text-sm mb-3 border-b border-slate-800 pb-2">${className}</h4>
+                <div class="space-y-2">
+                    ${candidatesByClass[className].map(c => `
+                        <div class="flex justify-between items-center bg-slate-900 p-2 rounded-lg">
+                            <span class="text-sm font-medium text-slate-200">${c.name}</span>
+                            <button class="delete-candidate-btn text-rose-500 hover:text-rose-400 transition" data-id="${c.id}">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
             </div>
-        `).join('') + (el.includeNota ? `
-            <div class="candidate-result-item flex flex-col items-center bg-slate-900/50 p-8 rounded-[2.5rem] border border-slate-800" data-cid="NOTA" data-votes="0">
-                <div class="w-24 h-24 rounded-full mb-6 bg-slate-800 flex items-center justify-center border-4 border-slate-700 text-slate-600"><svg class="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg></div>
-                <p class="font-black text-slate-500 text-lg mb-4 uppercase">NOTA</p>
-                <div class="w-full bg-slate-950 h-2.5 rounded-full mb-6 overflow-hidden"><div class="progress-bar bg-slate-700 h-full transition-all" style="width: 0%"></div></div>
-                <p class="text-6xl font-black text-slate-600 tally-num">0</p>
-            </div>` : '');
+        `).join('');
 
-        candidates.forEach(async c => {
-            const img = document.getElementById(`count-img-${c.id}`);
-            if(c.hasImage) {
-                const b = await db.getImage(c.id);
-                if(b) img.src = URL.createObjectURL(b);
-            } else img.src = c.gender.toLowerCase().startsWith('f') ? femaleIcon : maleIcon;
+        listContainer.querySelectorAll('.delete-candidate-btn').forEach(b => b.onclick = (e) => deleteCandidate(e.currentTarget.dataset.id));
+    };
+    
+    // --- NAVIGATION ---
+    document.getElementById('goto-voting-btn').addEventListener('click', () => {
+        if (!getActiveElection()) { showModal({ title: 'Error', body: 'Select an active election first.', cancelText: 'OK' }); return; }
+        renderVotingClassSelection();
+        showView('voting-class-selection-view');
+    });
+    document.getElementById('goto-counting-btn').addEventListener('click', () => {
+        if (!getActiveElection()) { showModal({ title: 'Error', body: 'Select an active election first.', cancelText: 'OK' }); return; }
+        renderCountingClassSelection();
+        showView('counting-class-selection-view');
+    });
+    document.getElementById('goto-reports-btn').addEventListener('click', () => {
+        if (!getActiveElection()) { showModal({ title: 'Error', body: 'Select an active election first.', cancelText: 'OK' }); return; }
+        renderReportsView();
+        showView('reports-view');
+    });
+
+    // --- STEP 6 & 7: VOTING PROCESS ---
+    const renderVotingClassSelection = () => {
+        const election = getActiveElection();
+        const container = document.getElementById('voting-class-selection-view');
+        container.innerHTML = `<h2 class="text-3xl font-bold mb-6">Start Voting for a Class</h2>
+            <button id="back-to-dash-1" class="mb-4 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 px-6 rounded-xl border border-slate-700 transition">Back to Dashboard</button>
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                ${Object.keys(appData.classes).sort().map(className => {
+                    const status = election.classStatus[className]?.status;
+                    const isCompleted = status === 'voted' || status === 'counted';
+                    return `
+                        <button 
+                            class="p-6 rounded-2xl shadow-xl font-bold text-xl transition transform hover:scale-105 ${isCompleted ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20'}"
+                            data-class="${className}"
+                            ${isCompleted ? 'disabled' : ''}
+                        >
+                            ${className}
+                            ${isCompleted ? '<br><span class="text-xs font-normal opacity-60 uppercase tracking-widest mt-1 block">Voted</span>' : ''}
+                        </button>
+                    `;
+                }).join('')}
+            </div>`;
+
+        container.querySelector('#back-to-dash-1').addEventListener('click', () => showView('admin-dashboard-view'));
+        container.querySelectorAll('button[data-class]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const className = e.currentTarget.dataset.class;
+                showModal({
+                    title: `Begin Class ${className}`,
+                    body: `Enter security password to initialize voting booth.`,
+                    requiresInput: true,
+                    onConfirm: (password) => {
+                        if (password === election.password) {
+                            startVotingForClass(className);
+                        } else {
+                            showModal({ title: 'Access Denied', body: 'The password entered is incorrect.', cancelText: 'OK' });
+                        }
+                    }
+                });
+            });
         });
+    };
 
-        const btn = document.getElementById('begin-counting-btn');
-        btn.classList.remove('hidden');
-        btn.onclick = () => runTallyAnimation(cls);
+    const startVotingForClass = (className) => {
+        appData.currentVotingClass = className;
+        appData.currentVoterIndex = 0;
+        const election = getActiveElection();
+        if (!election.votes[className]) {
+            election.votes[className] = [];
+        }
+        renderVotingScreen();
+        showView('voting-screen-view');
+        enterFullScreen(document.documentElement);
+    };
+
+    const renderVotingScreen = async () => {
+        const election = getActiveElection();
+        const container = document.getElementById('voting-screen-view');
+        const className = appData.currentVotingClass;
+        const totalVoters = appData.classes[className].length;
+        let candidates = election.candidates.filter(c => c.class === className);
+        
+        const totalCandidates = candidates.length + (election.includeNota ? 1 : 0);
+        let gridClass = 'grid-cols-2';
+        if (totalCandidates > 9) gridClass = 'grid-cols-5';
+        else if (totalCandidates > 6) gridClass = 'grid-cols-4';
+        else if (totalCandidates > 4) gridClass = 'grid-cols-3';
+
+        let cardSizeClass = 'p-3';
+        let imageSizeClass = 'w-24 h-24 md:w-32 md:h-32';
+        let textSizeClass = 'text-lg';
+
+        if (totalCandidates <= 4) {
+            cardSizeClass = 'p-8';
+            imageSizeClass = 'w-40 h-40 md:w-56 md:h-56';
+            textSizeClass = 'text-3xl';
+        } else if (totalCandidates <= 9) {
+            cardSizeClass = 'p-6';
+            imageSizeClass = 'w-28 h-28 md:w-40 md:h-40';
+            textSizeClass = 'text-2xl';
+        }
+
+        let notaCardHTML = '';
+        if (election.includeNota) {
+            notaCardHTML = `
+                <div class="candidate-card bg-slate-900 border-2 border-slate-800 rounded-3xl text-center cursor-pointer transition-transform transform hover:scale-105 flex flex-col items-center justify-center ${cardSizeClass}" data-candidate-id="NOTA">
+                    <div class="${imageSizeClass} mx-auto rounded-full bg-slate-800 flex items-center justify-center border-4 border-slate-700">
+                        <svg class="h-20 w-20 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                    </div>
+                    <h3 class="mt-4 ${textSizeClass} font-bold text-slate-400">NOTA</h3>
+                </div>
+            `;
+        }
+
+        container.innerHTML = `
+            <div class="text-center pt-8 mb-8">
+                <h2 class="text-5xl font-black text-blue-400 mb-2">${className} Election</h2>
+                <p id="voter-counter" class="text-2xl text-slate-500">Student ${appData.currentVoterIndex + 1} of ${totalVoters}</p>
+            </div>
+            <div id="candidate-cards" class="grid ${gridClass} max-w-7xl mx-auto">
+                ${candidates.map(c => `
+                    <div class="candidate-card bg-slate-900 border-2 border-slate-800 rounded-3xl text-center cursor-pointer transition-transform transform hover:scale-105 flex flex-col items-center justify-center ${cardSizeClass}" data-candidate-id="${c.id}">
+                        <img id="img-${c.id}" src="" alt="${c.name}" class="${imageSizeClass} mx-auto rounded-full object-cover border-4 border-slate-800 bg-slate-800">
+                        <h3 class="mt-4 ${textSizeClass} font-bold text-white">${c.name}</h3>
+                    </div>
+                `).join('')}
+                ${notaCardHTML}
+            </div>
+            <div id="vote-cast-overlay" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col justify-center items-center text-white z-50">
+                <div class="bg-emerald-500 rounded-full p-6 mb-8 shadow-2xl shadow-emerald-900/40">
+                    <svg class="w-20 h-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <h2 class="text-6xl font-black mb-4">Vote Recorded</h2>
+                <p class="text-2xl text-slate-400">Please leave the booth. Advance with TAB.</p>
+            </div>
+        `;
+
+        for (const c of candidates) {
+            const imgElement = document.getElementById(`img-${c.id}`);
+            if (c.hasImage) {
+                db.getImage(c.id).then(imageBlob => {
+                    if (imageBlob) imgElement.src = URL.createObjectURL(imageBlob);
+                });
+            } else {
+                imgElement.src = c.gender?.toLowerCase().startsWith('f') ? femaleIcon : maleIcon;
+            }
+        }
+
+        container.querySelectorAll('.candidate-card').forEach(card => {
+            card.addEventListener('click', handleVoteCast);
+        });
+    };
+    
+    const handleVoteCast = (e) => {
+        const card = e.currentTarget;
+        const candidateId = card.dataset.candidateId;
+        const election = getActiveElection();
+
+        const synth = new Tone.Synth().toDestination();
+        synth.triggerAttackRelease("C5", "4n");
+
+        election.votes[appData.currentVotingClass].push({
+            voterIndex: appData.currentVoterIndex,
+            candidateId: candidateId
+        });
+        saveState();
+
+        document.getElementById('vote-cast-overlay').classList.remove('hidden');
+        document.querySelectorAll('.candidate-card').forEach(c => c.style.pointerEvents = 'none');
+    };
+
+    const endVotingSession = () => {
+        const election = getActiveElection();
+        exitFullScreen();
+        showModal({
+            title: `Close Booth: ${appData.currentVotingClass}`,
+            body: `Verify admin password to finalize this class results.`,
+            requiresInput: true,
+            onConfirm: (password) => {
+                if (password === election.password) {
+                    election.classStatus[appData.currentVotingClass] = { status: 'voted' };
+                    saveState();
+                    renderVotingClassSelection();
+                    showView('voting-class-selection-view');
+                } else {
+                    showModal({ title: 'Error', body: 'Incorrect password.', cancelText: 'OK' });
+                }
+            }
+        });
+    };
+
+    document.addEventListener('keydown', (e) => {
+        if (document.getElementById('voting-screen-view').classList.contains('active-view')) {
+            const election = getActiveElection();
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                if (election.votes[appData.currentVotingClass].length > appData.currentVoterIndex) {
+                    appData.currentVoterIndex++;
+                    const totalVoters = appData.classes[appData.currentVotingClass].length;
+                    if (appData.currentVoterIndex < totalVoters) {
+                        renderVotingScreen();
+                    } else {
+                        document.getElementById('voter-counter').innerHTML = '<span class="text-emerald-400 font-black animate-pulse">VOTING COMPLETE - ESC TO EXIT</span>';
+                    }
+                }
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                endVotingSession();
+            }
+        }
+    });
+
+    // --- STEP 10 & 11: COUNTING PROCESS ---
+    const renderCountingClassSelection = () => {
+        const election = getActiveElection();
+        const container = document.getElementById('counting-class-selection-view');
+        const allVoted = Object.keys(appData.classes).every(c => election.classStatus[c]?.status === 'voted' || election.classStatus[c]?.status === 'counted');
+        
+        container.innerHTML = `
+            <h2 class="text-3xl font-bold mb-6 text-white">Counting Hub</h2>
+            <button id="back-to-dash-2" class="mb-6 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 px-6 rounded-xl border border-slate-700 transition">Dashboard</button>
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                ${Object.keys(appData.classes).sort().map(className => {
+                    const status = election.classStatus[className]?.status;
+                    const canCount = status === 'voted';
+                    const isCounted = status === 'counted';
+                    return `
+                        <button 
+                            class="p-6 rounded-2xl shadow-xl font-bold text-xl transition transform hover:scale-105 ${canCount ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-900/20' : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-50'}"
+                            data-class="${className}"
+                            ${!canCount ? 'disabled' : ''}
+                        >
+                            ${className}
+                            ${isCounted ? '<br><span class="text-xs opacity-60">FINISHED</span>' : ''}
+                        </button>
+                    `;
+                }).join('')}
+            </div>`;
+
+        container.querySelector('#back-to-dash-2').addEventListener('click', () => showView('admin-dashboard-view'));
+        container.querySelectorAll('button[data-class]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const className = e.currentTarget.dataset.class;
+                showModal({
+                    title: `Start Counting ${className}`,
+                    body: `Initialize automated vote counting process?`,
+                    onConfirm: () => startCountingForClass(className)
+                });
+            });
+        });
+    };
+    
+    const startCountingForClass = (className) => {
+        renderCountingScreen(className);
         showView('counting-screen-view');
         enterFullScreen(document.documentElement);
     };
 
-    function runTallyAnimation(cls) {
-        const el = getActiveElection();
-        const votes = el.votes[cls];
-        const btn = document.getElementById('begin-counting-btn');
-        btn.classList.add('hidden');
-        
-        let i = 0;
-        const itv = setInterval(() => {
-            if(i >= votes.length) {
-                clearInterval(itv);
-                document.getElementById('counting-status').textContent = 'AUDIT COMPLETE';
-                setTimeout(() => { exitFullScreen(); finalizeResults(cls); }, 1500);
-                return;
-            }
+    const renderCountingScreen = (className) => {
+        const election = getActiveElection();
+        const container = document.getElementById('counting-screen-view');
+        const candidates = election.candidates
+            .filter(c => c.class === className)
+            .map(c => ({ ...c, votes: 0 }));
             
-            const v = votes[i];
-            const card = document.querySelector(`[data-cid="${v.cid}"]`);
-            if(card) {
-                const val = parseInt(card.dataset.votes) + 1;
-                card.dataset.votes = val;
-                card.querySelector('.tally-num').textContent = val;
-                card.querySelector('.progress-bar').style.width = `${(val/votes.length)*100}%`;
-                
-                const emoji = document.createElement('div');
-                emoji.className = 'counting-vote';
-                emoji.innerHTML = '🗳️';
-                document.body.appendChild(emoji);
-                const rect = card.getBoundingClientRect();
-                emoji.style.left = (window.innerWidth/2) + 'px';
-                emoji.style.top = (window.innerHeight - 50) + 'px';
-                setTimeout(() => {
-                    emoji.style.transform = `translate(${rect.left - window.innerWidth/2 + rect.width/2}px, ${rect.top - window.innerHeight + 50}px) scale(1.5)`;
-                    emoji.style.opacity = 0;
-                }, 50);
-                setTimeout(() => emoji.remove(), 700);
-            }
-            document.getElementById('counting-status').textContent = `CERTIFYING VOTE ${i+1} / ${votes.length}`;
-            i++;
-        }, 300);
-    }
+        const totalCandidates = candidates.length + (election.includeNota ? 1 : 0);
+        let gridClass = 'grid-cols-2';
+        if (totalCandidates > 9) gridClass = 'grid-cols-5';
+        else if (totalCandidates > 6) gridClass = 'grid-cols-4';
+        else if (totalCandidates > 4) gridClass = 'grid-cols-3';
 
-    // --- REPORTS ---
-    document.getElementById('goto-reports-btn').onclick = () => showView('reports-view');
-    document.getElementById('report-candidates-btn').onclick = () => generateCandidateListReport();
-    
-    // Instructions
-    instructionsButton.onclick = () => {
-        showModal({
-            title: 'Protocol Guide',
-            body: `<div class="space-y-4 text-sm font-medium">
-                <p><strong class="text-blue-500">I. Import:</strong> Use Excel template. Clear names and classes required.</p>
-                <p><strong class="text-blue-500">II. Session:</strong> Create a session and define a PIN. PIN is critical for finalizing results.</p>
-                <p><strong class="text-blue-500">III. Images:</strong> All photos are auto-cropped to 1:1 square ratio for professional ballot display.</p>
-                <p><strong class="text-blue-500">IV. Voting:</strong> Booth uses <kbd>TAB</kbd> to cycle students and <kbd>ESC</kbd> + PIN to close session.</p>
-                <p><strong class="text-blue-500">V. Data:</strong> 100% Offline. Export daily to prevent browser data loss.</p>
-            </div>`,
-            cancelText: 'UNDERSTOOD'
+        container.innerHTML = `
+            <div class="text-center pt-8">
+                <h2 class="text-5xl font-black text-indigo-400 mb-2">Counting: ${className}</h2>
+                <p id="counting-status" class="text-2xl text-slate-500">System Ready</p>
+                <button id="begin-counting-btn" class="mt-8 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 px-12 rounded-2xl text-xl shadow-2xl shadow-emerald-900/30 transition transform hover:scale-105">Initiate Tally</button>
+            </div>
+            <div id="counting-candidate-list" class="grid ${gridClass} gap-6 max-w-7xl mx-auto p-6 mt-8">
+                ${candidates.map(c => `
+                    <div class="candidate-result-item flex flex-col items-center bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl" data-candidate-id="${c.id}" data-votes="0">
+                        <img id="img-count-${c.id}" src="" class="w-32 h-32 rounded-full mb-4 object-cover border-4 border-slate-800 bg-slate-800">
+                        <h3 class="text-xl font-bold text-center text-white mb-4 line-clamp-1">${c.name}</h3>
+                        <div class="w-full bg-slate-950 rounded-full h-4 relative">
+                            <div class="bg-indigo-500 h-4 rounded-full progress-bar shadow-lg shadow-indigo-900/40" style="width: 0%;"></div>
+                        </div>
+                        <div class="text-5xl font-black mt-6 text-indigo-400" id="vote-count-${c.id}">0</div>
+                    </div>
+                `).join('')}
+                ${election.includeNota ? `
+                    <div class="candidate-result-item flex flex-col items-center bg-slate-900/50 p-6 rounded-3xl border border-slate-800 shadow-xl" data-candidate-id="NOTA" data-votes="0">
+                         <div class="w-32 h-32 rounded-full bg-slate-800 flex items-center justify-center border-4 border-slate-700 mb-4">
+                            <svg class="h-16 w-16 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-center text-slate-400 mb-4 uppercase tracking-tighter">NOTA</h3>
+                        <div class="w-full bg-slate-950 rounded-full h-4">
+                            <div class="bg-slate-600 h-4 rounded-full progress-bar" style="width: 0%;"></div>
+                        </div>
+                        <div class="text-5xl font-black mt-6 text-slate-500" id="vote-count-NOTA">0</div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+
+        for (const c of candidates) {
+            const imgElement = document.getElementById(`img-count-${c.id}`);
+             if (c.hasImage) {
+                db.getImage(c.id).then(imageBlob => {
+                    if (imageBlob) imgElement.src = URL.createObjectURL(imageBlob);
+                });
+            } else {
+                imgElement.src = c.gender?.toLowerCase().startsWith('f') ? femaleIcon : maleIcon;
+            }
+        }
+
+        document.getElementById('begin-counting-btn').addEventListener('click', (e) => {
+            e.target.disabled = true;
+            e.target.classList.add('opacity-0', 'pointer-events-none');
+            animateCounting(className);
         });
     };
 
-    // --- SYSTEM INITIALIZATION ---
-    const init = async () => {
-        try {
-            await db.init();
-            const res = await fetch('schools.json');
-            if(!res.ok) throw new Error();
-            schoolsData = await res.json();
-            loadState();
-            if(!localStorage.getItem('alertDone')) {
-                showModal({ title: 'OFFLINE MODE ENABLED', body: 'All data is stored locally in this browser. Clearing history or cache will erase all records. <strong class="text-white">Export backups daily.</strong>', cancelText: 'I UNDERSTAND', onCancel: () => localStorage.setItem('alertDone', 't') });
+    const animateCounting = (className) => {
+        const election = getActiveElection();
+        const votes = election.votes[className];
+        const totalVotes = votes.length;
+        let i = 0;
+
+        const interval = setInterval(() => {
+            if (i >= totalVotes) {
+                clearInterval(interval);
+                document.getElementById('counting-status').textContent = 'Counting Complete';
+                setTimeout(() => {
+                    exitFullScreen();
+                    showResultModal(className);
+                }, 1500);
+                return;
             }
-        } catch (e) {
-            document.body.innerHTML = `<div class="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-12 text-center">
-                <div class="text-rose-500 mb-8"><svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></div>
-                <h1 class="text-4xl font-black text-white mb-4 uppercase tracking-tighter">Server Access Required</h1>
-                <p class="text-slate-400 max-w-sm mb-12">CORS policy blocks local file access. Run the folder via an HTTP server.</p>
-                <div class="bg-slate-900 border border-slate-800 p-8 rounded-[2rem] font-mono text-left w-full max-w-md text-emerald-400">
-                    <p class="text-slate-600 text-xs mb-4 uppercase font-black"># Run Command:</p>
-                    python -m http.server 8000
+
+            const vote = votes[i];
+            const candidateId = vote.candidateId.toString();
+            document.getElementById('counting-status').textContent = `Processing vote ${i + 1}/${totalVotes}`;
+
+            const candidateCard = document.querySelector(`.candidate-result-item[data-candidate-id='${candidateId}']`);
+            
+            if (candidateCard) {
+                const countDisplay = document.getElementById(`vote-count-${candidateId}`);
+                const currentVotes = parseInt(candidateCard.dataset.votes) + 1;
+                candidateCard.dataset.votes = currentVotes;
+                countDisplay.textContent = currentVotes;
+                
+                const progressBar = candidateCard.querySelector('.progress-bar');
+                const percentage = totalVotes > 0 ? (currentVotes / totalVotes) * 100 : 0;
+                progressBar.style.width = `${percentage}%`;
+                
+                const voteEl = document.createElement('div');
+                voteEl.innerHTML = '🗳️';
+                voteEl.className = 'counting-vote';
+                document.body.appendChild(voteEl);
+                const rect = candidateCard.getBoundingClientRect();
+                voteEl.style.left = (window.innerWidth / 2) + 'px';
+                voteEl.style.top = (window.innerHeight - 50) + 'px';
+                
+                setTimeout(() => {
+                    voteEl.style.transform = `translate(${rect.left - window.innerWidth/2 + rect.width/2}px, ${rect.top - window.innerHeight + 50}px) scale(2)`;
+                    voteEl.style.opacity = 0;
+                }, 50);
+
+                setTimeout(() => {
+                    voteEl.remove();
+                }, 500);
+            }
+
+            i++;
+        }, 300);
+    };
+
+    const showResultModal = (className) => {
+        const election = getActiveElection();
+        let candidates = election.candidates.filter(c => c.class === className);
+        const votes = election.votes[className];
+        const results = {};
+        candidates.forEach(c => results[c.id] = { ...c, count: 0 });
+        
+        let notaVotes = 0;
+        votes.forEach(v => {
+            if (v.candidateId === 'NOTA') {
+                notaVotes++;
+            } else if (results[v.candidateId]) {
+                results[v.candidateId].count++;
+            }
+        });
+
+        let sortedResults = Object.values(results).sort((a, b) => b.count - a.count);
+        let winner = sortedResults.length > 0 ? sortedResults[0] : null;
+        let isDraw = winner && sortedResults.length > 1 && sortedResults[0].count === sortedResults[1].count && sortedResults[0].count > 0;
+        
+        election.classStatus[className] = { status: 'counted' };
+        
+        if (isDraw) {
+            const tiedCandidates = sortedResults.filter(c => c.count === winner.count);
+            const body = `
+                <div id="draw-container" class="text-center">
+                    <h2 class="text-3xl font-black text-rose-500 mb-6">TIE DETECTED</h2>
+                    <p class="mb-4">The following candidates received identical vote counts:</p>
+                    <div class="space-y-2 mb-8">
+                        ${tiedCandidates.map(c => `<div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xl font-bold">${c.name} <span class="text-indigo-400">(${c.count})</span></div>`).join('')}
+                    </div>
+                    <p class="text-slate-400">Would you like to resolve this tie by selecting a winner at random?</p>
                 </div>
-            </div>`;
+            `;
+
+            showModal({
+                title: `Tie Breaker: ${className}`,
+                body: body,
+                confirmText: 'Resolve Randomly',
+                onConfirm: () => {
+                    const randomIndex = Math.floor(Math.random() * tiedCandidates.length);
+                    const finalWinner = tiedCandidates[randomIndex];
+                    election.classStatus[className].winnerId = finalWinner.id;
+                    saveState();
+                    showWinnerModal(className, finalWinner, sortedResults, notaVotes, true);
+                },
+                cancelText: 'Handle Manually',
+                onCancel: () => {
+                    renderCountingClassSelection();
+                    showView('counting-class-selection-view');
+                }
+            });
+
+        } else {
+            if (winner) {
+                election.classStatus[className].winnerId = winner.id;
+            }
+            saveState();
+            showWinnerModal(className, winner, sortedResults, notaVotes, false);
         }
     };
 
-    init();
-    showView('homepage-view');
-});
-
-// Finalize Results Logic
-function finalizeResults(cls) {
-    const el = appData.elections.find(e => e.id === appData.activeElectionId);
-    const votes = el.votes[cls] || [];
-    const tallies = {};
-    const candidates = el.candidates.filter(c => c.class === cls);
-    
-    candidates.forEach(c => tallies[c.id] = 0);
-    if(el.includeNota) tallies['NOTA'] = 0;
-    votes.forEach(v => { if(tallies[v.cid] !== undefined) tallies[v.cid]++; });
-    
-    const candidatesOnly = Object.entries(tallies).filter(([id]) => id !== 'NOTA');
-    candidatesOnly.sort((a,b) => b[1] - a[1]);
-    
-    const winnerId = candidatesOnly[0]?.[0];
-    const runnerId = candidatesOnly[1]?.[0];
-    const winVotes = candidatesOnly[0]?.[1] || 0;
-    const runVotes = candidatesOnly[1]?.[1] || 0;
-    const lead = winVotes - runVotes;
-
-    el.classStatus[cls] = { status: 'counted', winnerId };
-    
-    let body = `<div class="space-y-6 text-center">`;
-    if(winnerId && winVotes > 0) {
-        const winner = el.candidates.find(c => c.id === winnerId);
-        body += `<div class="mb-4"><span class="bg-emerald-500/20 text-emerald-400 text-xs font-black px-4 py-1.5 rounded-full uppercase">Certified Result</span></div>
-                 <h4 class="text-5xl font-black text-white tracking-tighter">${winner.name}</h4>
-                 <p class="text-indigo-400 font-black text-xl mt-2">${winVotes} VOTES <span class="text-slate-600 mx-2">•</span> LEAD: ${lead}</p>`;
-    } else {
-        body += `<h4 class="text-3xl font-black text-rose-500">NO WINNER</h4>`;
-    }
-    
-    body += `<div class="bg-slate-950 p-8 rounded-[2.5rem] border border-slate-800 text-left space-y-4 mt-8">
-                <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-900 pb-2">Final Tally</p>`;
-    Object.entries(tallies).sort((a,b)=>b[1]-a[1]).forEach(([id, count]) => {
-        const name = id === 'NOTA' ? 'NOTA' : el.candidates.find(x => x.id === id).name;
-        body += `<div class="flex justify-between items-center"><span class="font-bold text-slate-300">${name}</span><span class="font-black text-white text-xl">${count}</span></div>`;
-    });
-    body += `</div></div>`;
-    
-    localStorage.setItem('electionAppData', JSON.stringify(appData));
-    showModal({ title: `CERTIFICATE: ${cls}`, body, cancelText: 'FINALIZE' });
-    window.location.reload();
-}
-
-async function generateCandidateListReport() {
-    const election = appData.elections.find(e => e.id === appData.activeElectionId);
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const femaleIcon = 'female.png';
-    const maleIcon = 'male.png';
-    
-    doc.setFontSize(24);
-    doc.setTextColor(30, 41, 59);
-    doc.text(`BALLOT REGISTRY: ${appData.school.name}`, 14, 25);
-    doc.setFontSize(11);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`SESSION: ${election.name} | GENERATED: ${new Date().toLocaleString()}`, 14, 32);
-    let y = 50;
-
-    const grouped = election.candidates.reduce((acc, c) => { if(!acc[c.class]) acc[c.class] = []; acc[c.class].push(c); return acc; }, {});
-
-    for (const cls of Object.keys(grouped).sort()) {
-        if(y > 240) { doc.addPage(); y = 20; }
-        doc.setFontSize(16);
-        doc.setTextColor(59, 130, 246);
-        doc.text(`CLASS UNIT: ${cls}`, 14, y);
-        y += 6;
-
-        const tableData = [];
-        for(const c of grouped[cls]) {
-            let imgBase64 = null;
-            if(c.hasImage) {
-                const blob = await db.getImage(c.id);
-                if(blob) imgBase64 = await convertToBase64(blob);
-            } else {
-                imgBase64 = await convertToBase64(c.gender.toLowerCase().startsWith('f') ? femaleIcon : maleIcon);
+    const showWinnerModal = async (className, winner, sortedResults, notaVotes, wasTie) => {
+        const election = getActiveElection();
+        const totalVotes = election.votes[className].length;
+        let tieBreakerMessage = wasTie ? `<p class="text-sm text-amber-500 font-bold mb-4 uppercase tracking-widest">Selected by tie-breaker algorithm</p>` : '';
+        
+        let voteLead = '';
+        if (winner && sortedResults.length > 1) {
+            const lead = sortedResults[0].count - sortedResults[1].count;
+            if (lead > 0) {
+                voteLead = `<div class="mt-4 bg-emerald-500/10 text-emerald-400 py-2 px-6 rounded-full text-lg font-bold inline-block border border-emerald-500/20">Victory Lead: ${lead} Vote${lead > 1 ? 's' : ''}</div>`;
             }
-            tableData.push([{ content: '', image: imgBase64 }, c.name, c.gender]);
         }
 
-        doc.autoTable({
-            head: [['PORTRAIT', 'CANDIDATE NAME', 'GENDER']],
-            body: tableData,
-            startY: y,
-            theme: 'grid',
-            styles: { minCellHeight: 22, verticalAlign: 'middle', fontSize: 10, cellPadding: 2 },
-            columnStyles: { 0: { cellWidth: 25 } },
-            didDrawCell: (data) => {
-                if (data.column.index === 0 && data.cell.section === 'body' && data.cell.raw.image) {
-                    doc.addImage(data.cell.raw.image, 'JPEG', data.cell.x + 3.5, data.cell.y + 2, 18, 18);
+        let body = '';
+        if (winner && winner.count > 0) {
+             body = `
+                <div class="text-center py-6">
+                    <img id="winner-img" src="" class="w-48 h-48 mx-auto rounded-full object-cover border-8 border-emerald-500 shadow-2xl shadow-emerald-900/30 mb-6">
+                    <h2 class="text-4xl font-black text-white mb-2">${winner.name}</h2>
+                    ${tieBreakerMessage}
+                    <p class="text-xl text-slate-400 mb-2">Elected Representative for <strong>${className}</strong></p>
+                    <p class="text-3xl font-black text-indigo-400">${winner.count} Total Votes</p>
+                    ${voteLead}
+                </div>
+            `;
+        } else {
+             body = `<h2 class="text-3xl font-black text-center text-rose-500 py-12">NO WINNER DECLARED</h2><p class="text-center text-slate-400">No candidates received votes in this session.</p>`;
+        }
+        
+        body += `
+            <div class="mt-8 bg-slate-950 p-6 rounded-3xl border border-slate-800">
+                <h4 class="font-bold text-sm text-slate-500 uppercase tracking-widest mb-4">Complete Tally</h4>
+                <div class="space-y-3">
+                    ${sortedResults.map(r => `
+                        <div class="flex justify-between items-center text-lg">
+                            <span class="text-slate-300">${r.name}</span>
+                            <span class="font-bold text-white">${r.count}</span>
+                        </div>
+                    `).join('')}
+                    ${election.includeNota ? `
+                        <div class="flex justify-between items-center text-lg opacity-60">
+                            <span class="text-slate-500 italic">NOTA</span>
+                            <span class="font-bold text-slate-500">${notaVotes}</span>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>`;
+
+        showModal({
+            title: `Certification of Results`,
+            body: body,
+            cancelText: 'Close Results',
+            onCancel: () => {
+                renderCountingClassSelection();
+                showView('counting-class-selection-view');
+            }
+        });
+
+        if (winner) {
+            const imgElement = document.getElementById('winner-img');
+            if (winner.hasImage) {
+                const blob = await db.getImage(winner.id);
+                if(blob) imgElement.src = URL.createObjectURL(blob);
+            } else {
+                imgElement.src = winner.gender?.toLowerCase().startsWith('f') ? femaleIcon : maleIcon;
+            }
+        }
+    }
+    
+    // --- STEP 12: REPORTS ---
+    const renderReportsView = () => {
+        const election = getActiveElection();
+        const container = document.getElementById('reports-view');
+        container.innerHTML = `
+            <h2 class="text-3xl font-bold mb-6 text-white">Election Intelligence</h2>
+            <button id="back-to-dash-3" class="mb-8 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 px-6 rounded-xl border border-slate-700 transition">Dashboard</button>
+            <div class="grid gap-6">
+                <div class="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-2xl">
+                    <p class="text-slate-400 mb-8">Generate certified PDF documentation for the election: <strong class="text-white">${election.name}</strong></p>
+                    <div class="grid sm:grid-cols-3 gap-4">
+                        <button id="report-candidates-btn" class="bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-2xl border border-slate-700 transition">Candidate List</button>
+                        <button id="report-winners-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl transition shadow-lg shadow-blue-900/20">Winners Registry</button>
+                        <button id="report-detailed-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-2xl transition shadow-lg shadow-indigo-900/20">Audit Report</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.querySelector('#back-to-dash-3').addEventListener('click', () => showView('admin-dashboard-view'));
+        document.getElementById('report-candidates-btn').addEventListener('click', generateCandidateListReport);
+        document.getElementById('report-winners-btn').addEventListener('click', generateWinnersReport);
+        document.getElementById('report-detailed-btn').addEventListener('click', generateDetailedReport);
+    };
+
+    const generateCandidateListReport = async () => {
+        const election = getActiveElection();
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setFontSize(18);
+        doc.text(`${appData.school.name} - Candidate Registry`, 14, 22);
+        doc.setFontSize(12);
+        doc.text(`Election: ${election.name}`, 14, 30);
+        let startY = 40;
+
+        const candidatesByClass = election.candidates.reduce((acc, c) => {
+            if (!acc[c.class]) acc[c.class] = [];
+            acc[c.class].push(c);
+            return acc;
+        }, {});
+
+        for (const className of Object.keys(candidatesByClass).sort()) {
+            doc.setFontSize(14);
+            doc.text(`Class: ${className}`, 14, startY);
+            startY += 7;
+
+            const tableData = [];
+            for(const c of candidatesByClass[className]) {
+                let imageSrc = '';
+                if (c.hasImage) {
+                    const blob = await db.getImage(c.id);
+                    if (blob) {
+                        const reader = new FileReader();
+                        await new Promise(resolve => {
+                            reader.onload = (e) => { imageSrc = e.target.result; resolve(); };
+                            reader.readAsDataURL(blob);
+                        });
+                    }
+                } else {
+                    const gender = c.gender?.toLowerCase() || '';
+                    const img = new Image();
+                    img.src = gender.startsWith('f') ? femaleIcon : maleIcon;
+                    await new Promise(resolve => {
+                       img.onload = () => {
+                           const canvas = document.createElement('canvas');
+                           canvas.width = 100; canvas.height = 100;
+                           const ctx = canvas.getContext('2d');
+                           ctx.drawImage(img, 0, 0, 100, 100);
+                           imageSrc = canvas.toDataURL('image/png');
+                           resolve();
+                       }
+                    });
+                }
+                tableData.push([{ content: '', image: imageSrc, width: 10 }, c.name, c.gender]);
+            }
+            
+            doc.autoTable({
+                head: [['Icon', 'Name', 'Gender']],
+                body: tableData,
+                startY: startY,
+                theme: 'grid',
+                columnStyles: { 0: { cellWidth: 15 } },
+                didParseCell: (d) => { if (d.section === 'body') d.cell.styles.minCellHeight = 15; },
+                didDrawCell: (data) => {
+                    if (data.column.index === 0 && data.cell.section === 'body' && data.cell.raw.image) {
+                        const y = data.cell.y + (data.cell.height - 10) / 2;
+                        doc.addImage(data.cell.raw.image, 'PNG', data.cell.x + 2.5, y, 10, 10);
+                    }
+                }
+            });
+            startY = doc.lastAutoTable.finalY + 15;
+        }
+        doc.save(`Candidate_Registry_${election.name}.pdf`);
+    };
+
+    const generateWinnersReport = () => {
+        const election = getActiveElection();
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.setFontSize(18);
+        doc.text(`${appData.school.name} - Election Winners`, 14, 22);
+        doc.setFontSize(12);
+        doc.text(`Official Winners Registry: ${election.name}`, 14, 30);
+        const tableData = [];
+        Object.keys(appData.classes).sort().forEach(className => {
+            const classInfo = election.classStatus[className];
+            if (classInfo?.status === 'counted') {
+                const winnerId = classInfo.winnerId;
+                const winner = election.candidates.find(c => c.id === winnerId);
+                if (winner) {
+                    const votes = election.votes[className] || [];
+                    const winnerCount = votes.filter(v => v.candidateId == winner.id).length;
+                    tableData.push([className, winner.name, winnerCount]);
                 }
             }
         });
-        y = doc.lastAutoTable.finalY + 15;
-    }
-    doc.save(`registry_${election.name.replace(/\s+/g, '_')}.pdf`);
-}
+        doc.autoTable({ head: [['Class', 'Representative Elect', 'Votes']], body: tableData, startY: 40 });
+        doc.save(`Winners_List_${election.name}.pdf`);
+    };
 
-function enterFullScreen(element) {
-    if (element.requestFullscreen) element.requestFullscreen();
-    else if (element.webkitRequestFullscreen) element.webkitRequestFullscreen();
-    else if (element.msRequestFullscreen) element.msRequestFullscreen();
-}
+    const generateDetailedReport = () => {
+        const election = getActiveElection();
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.setFontSize(18);
+        doc.text(`${appData.school.name} - Detailed Audit`, 14, 22);
+        let startY = 40;
+        Object.keys(appData.classes).sort().forEach(className => {
+            const classInfo = election.classStatus[className];
+            if (classInfo?.status === 'counted') {
+                const totalVoters = appData.classes[className].length;
+                const votes = election.votes[className] || [];
+                doc.setFontSize(14);
+                doc.text(`Class: ${className} (${votes.length}/${totalVoters} Voted)`, 14, startY);
+                startY += 7;
+                const candidates = election.candidates.filter(c => c.class === className);
+                const results = candidates.map(c => [c.name, votes.filter(v => v.candidateId == c.id).length]);
+                if (election.includeNota) results.push(['NOTA', votes.filter(v => v.candidateId == 'NOTA').length]);
+                doc.autoTable({ head: [['Ballot Option', 'Total Votes']], body: results, startY: startY });
+                startY = doc.lastAutoTable.finalY + 15;
+            }
+        });
+        doc.save(`Audit_Report_${election.name}.pdf`);
+    };
 
-function exitFullScreen() {
-    if (document.exitFullscreen) document.exitFullscreen();
-    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-    else if (document.msExitFullscreen) document.msExitFullscreen();
-}
+    // --- DATA MANAGEMENT ---
+    document.getElementById('export-data-btn').addEventListener('click', () => {
+        try {
+            const dataStr = JSON.stringify(appData);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `backup_${appData.school?.name || 'election'}_${new Date().toISOString().slice(0,10)}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            showModal({ title: 'Export Successful', body: 'Backup file generated. Keep this file safe for data restoration.', cancelText: 'OK' });
+        } catch (error) {
+            showModal({ title: 'Export Failed', body: 'Error occurred while generating backup.', cancelText: 'OK' });
+        }
+    });
+
+    document.getElementById('import-data-input').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const importedData = JSON.parse(event.target.result);
+                showModal({
+                    title: 'Overwrite Confirmation',
+                    body: 'Importing will replace all current data. Ensure you have exported current progress first.',
+                    confirmText: 'Proceed with Import',
+                    onConfirm: () => { appData = importedData; saveState(); window.location.reload(); }
+                });
+            } catch (error) {
+                showModal({ title: 'Import Failed', body: 'The selected file is not a valid backup.', cancelText: 'OK' });
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+    });
+
+    // --- INITIAL LOAD ---
+    const initializeApp = async () => {
+        try {
+            await db.init();
+            const response = await fetch('schools.json');
+            if (!response.ok) {
+                document.body.innerHTML = `<div class="p-12 text-center text-white flex flex-col items-center justify-center min-h-screen bg-slate-950">
+                    <div class="bg-rose-500/10 p-4 rounded-full mb-6 text-rose-500"><svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></div>
+                    <h1 class="text-3xl font-black mb-4">Local Environment Setup Required</h1>
+                    <p class="max-w-md text-slate-400 leading-relaxed mb-10">Browsers require a web server to access <strong>schools.json</strong>. Running the HTML file directly will not work.</p>
+                    <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl font-mono text-left max-w-lg w-full text-sm">
+                        <p class="text-blue-400 mb-2"># If you have Python installed, run this in your folder:</p>
+                        <p class="text-emerald-400 bg-slate-950 p-3 rounded-xl mb-6 select-all">python -m http.server</p>
+                        <p class="text-blue-400 mb-2"># Then visit this address:</p>
+                        <p class="text-emerald-400 bg-slate-950 p-3 rounded-xl select-all">http://localhost:8000</p>
+                    </div>
+                </div>`;
+                throw new Error('Failed to load schools.json');
+            }
+            schoolsData = await response.json();
+            loadState();
+
+            if (!localStorage.getItem('welcomeMessageShown')) {
+                showModal({
+                    title: 'CRITICAL DATA NOTICE',
+                    body: 'All election intelligence is stored locally on this device. Clearing browser history or site data will erase all records. Use the <strong class="text-white">Export Data</strong> feature daily to ensure continuity.',
+                    cancelText: 'I Understand',
+                    onCancel: () => { localStorage.setItem('welcomeMessageShown', 'true'); }
+                });
+            }
+        } catch (error) { console.error(error); }
+    };
+    
+    initializeApp();
+    renderElectionForm();
+});
 </script>
 </body>
 </html>
