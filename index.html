@@ -1,9 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
+<<!DOCTYPE html>
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Offline School Election System</title>
+    <title>Offline School Election System - Dark Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Library for reading Excel files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -12,239 +12,266 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <!-- Library for generating audio tones -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .view { display: none; animation: fadeIn 0.5s ease-in-out; }
+        body { font-family: 'Inter', sans-serif; scrollbar-gutter: stable; }
+        .view { display: none; animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         .active-view { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background-color: white; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); width: 90%; max-width: 680px; display: flex; flex-direction: column; max-height: 90vh; }
-        .modal-body { overflow-y: auto; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.8); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background-color: #1e293b; color: #f8fafc; padding: 2rem; border-radius: 1rem; border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); width: 90%; max-width: 680px; display: flex; flex-direction: column; max-height: 90vh; }
+        .modal-body { overflow-y: auto; padding-right: 0.5rem; }
+        
+        /* Custom Scrollbar for dark theme */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
         .counting-vote {
-            animation: flyToCandidate 1s ease-in-out;
+            animation: flyToCandidate 0.8s ease-in-out forwards;
             position: absolute;
-            font-size: 2rem;
+            font-size: 2.5rem;
             z-index: 100;
         }
         @keyframes flyToCandidate {
-            0% { transform: scale(0.5); opacity: 1; }
-            100% { transform: scale(1.5); opacity: 0; }
+            0% { transform: scale(1) translateY(0); opacity: 1; }
+            100% { transform: scale(1.5) translateY(-100px); opacity: 0; }
         }
-        .progress-bar {
-            transition: width 0.3s ease-in-out;
+
+        .input-dark {
+            background-color: #0f172a;
+            border: 1px solid #334155;
+            color: #f1f5f9;
+            transition: border-color 0.2s;
         }
-        .disabled-card {
-            opacity: 0.5;
-            pointer-events: none;
+        .input-dark:focus {
+            border-color: #3b82f6;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
         }
-        /* Dynamic candidate card container */
+
         #candidate-cards {
             display: grid;
-            gap: 1rem;
+            gap: 1.5rem;
             place-items: center;
-            height: calc(100vh - 220px); /* Adjust based on header height */
+            height: calc(100vh - 220px);
             padding: 1rem;
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-900">
+<body class="bg-slate-950 text-slate-100 min-h-screen">
 
-    <div id="app-container" class="container mx-auto p-4">
+    <div id="app-container" class="container mx-auto p-4 max-w-7xl">
         <!-- Header -->
-        <header class="bg-white shadow rounded-lg p-4 mb-6 flex justify-between items-center">
-            <h1 id="header-title" class="text-2xl font-bold text-blue-600">School Election Portal</h1>
-            <div id="header-buttons" class="flex items-center space-x-4">
-                <button id="instructions-btn" class="hidden bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition">How to Use</button>
-                <button id="logout-button" class="hidden bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition">Logout</button>
+        <header class="bg-slate-900/50 backdrop-blur-md border border-slate-800 shadow-xl rounded-2xl p-4 mb-8 flex justify-between items-center sticky top-4 z-50">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 p-2 rounded-lg shadow-lg shadow-blue-900/20">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h1 id="header-title" class="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400">Election Portal</h1>
+            </div>
+            <div id="header-buttons" class="flex items-center space-x-3">
+                <button id="instructions-btn" class="hidden bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-2 px-4 rounded-xl border border-slate-700 transition">Instructions</button>
+                <button id="logout-button" class="hidden bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2 px-4 rounded-xl shadow-lg shadow-rose-900/20 transition">Logout</button>
             </div>
         </header>
 
-        <!-- Main Content Area -->
+        <!-- Main Content -->
         <main id="main-content">
             <!-- Homepage View -->
             <div id="homepage-view" class="view active-view">
-                <div class="max-w-4xl mx-auto text-center py-12">
-                    <h1 class="text-5xl font-bold text-blue-600">Offline School Election System</h1>
-                    <p class="mt-4 text-xl text-gray-600">A simple, secure, and offline-first solution for conducting school elections.</p>
-                    <button id="goto-login-btn" class="mt-8 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full text-lg transition transform hover:scale-105">Admin Login</button>
+                <div class="max-w-4xl mx-auto text-center py-16">
+                    <h1 class="text-6xl font-extrabold text-white mb-6">Conduct Secure <span class="text-blue-500">School Elections</span></h1>
+                    <p class="text-xl text-slate-400 leading-relaxed mb-10">A materialism-inspired dark interface for local, secure, and fully offline digital voting.</p>
+                    <button id="goto-login-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-10 rounded-2xl text-lg shadow-2xl shadow-blue-900/40 transition transform hover:-translate-y-1">Admin Dashboard Login</button>
                 </div>
 
-                <div class="max-w-5xl mx-auto grid md:grid-cols-3 gap-8 mt-10">
-                    <div class="bg-white p-6 rounded-xl shadow-md text-center">
-                        <svg class="w-12 h-12 mx-auto text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path></svg>
-                        <h3 class="text-xl font-bold mb-2 mt-4">Offline First</h3>
-                        <p class="text-gray-600">Works entirely in your browser. No internet needed after initial setup. All data is stored securely on your local machine.</p>
+                <div class="grid md:grid-cols-3 gap-8 mt-10">
+                    <div class="bg-slate-900 p-8 rounded-2xl border border-slate-800 shadow-xl">
+                        <div class="bg-blue-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-6">
+                            <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">Offline Core</h3>
+                        <p class="text-slate-400 leading-relaxed">Runs entirely in-browser. Zero data is sent to external servers, ensuring absolute privacy.</p>
                     </div>
-                    <div class="bg-white p-6 rounded-xl shadow-md text-center">
-                        <svg class="w-12 h-12 mx-auto text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        <h3 class="text-xl font-bold mb-2 mt-4">Easy Data Import</h3>
-                        <p class="text-gray-600">Quickly upload all student data from a single, pre-formatted Excel file, saving you hours of manual entry.</p>
+                    <div class="bg-slate-900 p-8 rounded-2xl border border-slate-800 shadow-xl">
+                        <div class="bg-indigo-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-6">
+                            <svg class="w-8 h-8 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">Instant Reports</h3>
+                        <p class="text-slate-400 leading-relaxed">Generate beautiful PDF reports with candidate photos and detailed vote analytics instantly.</p>
                     </div>
-                    <div class="bg-white p-6 rounded-xl shadow-md text-center">
-                        <svg class="w-12 h-12 mx-auto text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                        <h3 class="text-xl font-bold mb-2 mt-4">Secure & Controlled</h3>
-                        <p class="text-gray-600">Password-protected sections and a fullscreen, kiosk-style voting screen ensure a fair and distraction-free election process.</p>
-                    </div>
-                </div>
-                 <div class="max-w-5xl mx-auto mt-12 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-r-lg">
-                    <h3 class="font-bold">Important Notice</h3>
-                    <p>This application saves all data locally in your browser. Clearing your browser history or cache will permanently delete all your election data. Use the "Export Data" feature regularly to create backups.</p>
-                </div>
-                <div class="max-w-5xl mx-auto mt-12">
-                    <h2 class="text-3xl font-bold text-center mb-8">How It Works in 5 Simple Steps</h2>
-                    <div class="space-y-6">
-                        <div class="flex items-start space-x-4"><div class="flex-shrink-0 w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-xl">1</div><div><h4 class="font-bold text-lg">Setup</h4><p class="text-gray-600">Login, enter your school name and code, and upload your student list from the provided Excel template.</p></div></div>
-                        <div class="flex items-start space-x-4"><div class="flex-shrink-0 w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-xl">2</div><div><h4 class="font-bold text-lg">Create Election & Add Candidates</h4><p class="text-gray-600">Create a new election, set a password, and add candidates for each class, including their photos.</p></div></div>
-                        <div class="flex items-start space-x-4"><div class="flex-shrink-0 w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-xl">3</div><div><h4 class="font-bold text-lg">Vote</h4><p class="text-gray-600">On election day, start the voting for each class. The system enters a secure fullscreen mode for voters.</p></div></div>
-                        <div class="flex items-start space-x-4"><div class="flex-shrink-0 w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-xl">4</div><div><h4 class="font-bold text-lg">Count</h4><p class="text-gray-600">After voting is complete, watch the animated vote counting in real-time and see the winner announced.</p></div></div>
-                        <div class="flex items-start space-x-4"><div class="flex-shrink-0 w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-xl">5</div><div><h4 class="font-bold text-lg">Report & Backup</h4><p class="text-gray-600">Generate and download detailed PDF reports of the results. Export all your data for backup or to move to another computer.</p></div></div>
+                    <div class="bg-slate-900 p-8 rounded-2xl border border-slate-800 shadow-xl">
+                        <div class="bg-emerald-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-6">
+                            <svg class="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-1.428A9.99 9.99 0 0012 21a9.99 9.99 0 008.213-4.286M9 11V9a3 3 0 016 0v2m-6 5h6"></path></svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">Secure Flow</h3>
+                        <p class="text-slate-400 leading-relaxed">TAB-key advancement and ESC protection prevents unauthorized access during voting.</p>
                     </div>
                 </div>
             </div>
 
-            <!-- STEP 1: Admin Login -->
-            <div id="login-view" class="view max-w-md mx-auto bg-white p-8 rounded-xl shadow-md">
-                <h2 class="text-2xl font-bold text-center mb-6">Admin Login</h2>
-                <input id="admin-user" type="text" placeholder="Username" class="w-full p-3 mb-4 border rounded-lg" value="admin">
-                <input id="admin-pass" type="password" placeholder="Password" class="w-full p-3 mb-4 border rounded-lg" value="admin123">
-                <button id="login-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition">Login</button>
-            </div>
-
-            <!-- STEP 2: School Setup -->
-            <div id="school-setup-view" class="view max-w-lg mx-auto bg-white p-8 rounded-xl shadow-md">
-                <h2 class="text-2xl font-bold mb-4">Setup Institution</h2>
-                <p class="mb-4 text-gray-600">Enter your institution details to begin.</p>
+            <!-- Login View -->
+            <div id="login-view" class="view max-w-md mx-auto bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-2xl">
+                <h2 class="text-3xl font-bold text-center mb-8">Admin Access</h2>
                 <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Institution Code (Optional)</label>
-                        <input id="school-code-input" type="text" placeholder="e.g. 42003" class="w-full p-3 border rounded-lg">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Institution Name <span class="text-red-500">*</span></label>
-                        <input id="school-name-input" type="text" placeholder="e.g. Govt. H S S Aruvikkara" class="w-full p-3 border rounded-lg">
-                    </div>
+                    <input id="admin-user" type="text" placeholder="Username" class="w-full p-4 rounded-xl input-dark" value="admin">
+                    <input id="admin-pass" type="password" placeholder="Password" class="w-full p-4 rounded-xl input-dark" value="admin123">
+                    <button id="login-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-900/30 transition">Enter Portal</button>
                 </div>
-                <div id="school-name-display" class="hidden p-3 mt-4 bg-green-100 text-green-800 rounded-lg"></div>
-                <button id="confirm-school-btn" class="w-full mt-6 bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition">Confirm & Continue</button>
-                <button id="report-missing-school-btn" class="mt-4 w-full text-sm text-blue-600 hover:underline">Can't find your school in lookup?</button>
             </div>
 
-            <!-- Admin Dashboard (Hub for all actions) -->
+            <!-- School Setup View -->
+            <div id="school-setup-view" class="view max-w-lg mx-auto bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-2xl">
+                <h2 class="text-3xl font-bold mb-4">Institution Setup</h2>
+                <p class="mb-6 text-slate-400">Configure your school details to initialize the system.</p>
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-2">Institution Code (Optional)</label>
+                        <input id="school-code-input" type="text" placeholder="e.g. 42003" class="w-full p-4 rounded-xl input-dark">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-2">Institution Name <span class="text-blue-500">*</span></label>
+                        <input id="school-name-input" type="text" placeholder="e.g. Govt. H S S Aruvikkara" class="w-full p-4 rounded-xl input-dark">
+                    </div>
+                </div>
+                <button id="confirm-school-btn" class="w-full mt-8 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-900/20 transition">Initialize System</button>
+                <button id="report-missing-school-btn" class="mt-4 w-full text-sm text-slate-500 hover:text-blue-400 transition">Can't find your school in lookup?</button>
+            </div>
+
+            <!-- Admin Dashboard View -->
             <div id="admin-dashboard-view" class="view">
-                <h2 class="text-3xl font-bold mb-6" id="dashboard-school-name"></h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <!-- Student Data -->
-                    <div class="bg-white p-6 rounded-xl shadow-md">
-                        <h3 class="text-xl font-bold mb-4">1. Student Data</h3>
-                        <p class="text-gray-600 mb-4">Upload the student list (.xlsx). Columns: name, class, gender.</p>
-                        <input type="file" id="student-file-input" accept=".xlsx, .xls" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
-                        <button id="download-sample-btn" class="mt-3 w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 rounded-lg">Download Sample File</button>
-                        <div id="student-data-status" class="mt-4 text-green-600 font-semibold"></div>
+                <h2 class="text-4xl font-bold mb-8 text-white" id="dashboard-school-name"></h2>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Student Data Section -->
+                    <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+                        <h3 class="text-xl font-bold mb-6 flex items-center"><span class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3 text-sm">1</span> Student Records</h3>
+                        <p class="text-slate-400 text-sm mb-6">Load your voters using a standard Excel sheet.</p>
+                        <input type="file" id="student-file-input" accept=".xlsx, .xls" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600/10 file:text-blue-400 hover:file:bg-blue-600/20 cursor-pointer"/>
+                        <button id="download-sample-btn" class="mt-4 w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2.5 rounded-xl border border-slate-700 transition">Template File</button>
+                        <div id="student-data-status" class="mt-4 text-emerald-400 font-medium text-sm"></div>
                     </div>
-                    <!-- Create/Update Election -->
-                    <div class="bg-white p-6 rounded-xl shadow-md">
-                        <h3 id="election-form-title" class="text-xl font-bold mb-4">2. Create Election</h3>
-                        <input id="election-name" type="text" placeholder="Election Name" class="w-full p-2 mb-3 border rounded">
-                        <div class="relative">
-                            <input id="election-password" type="password" placeholder="Security Password" class="w-full p-2 mb-3 border rounded pr-10">
-                            <span id="toggle-password" class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-400 hover:text-gray-600">
-                                <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" /></svg>
-                                <svg id="eye-off-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2 2 0 01-2.828 2.828l-1.515-1.514a4 4 0 00-1.423-.93L3.086 3.086A9.948 9.948 0 0110 3a9.958 9.958 0 014.512 1.074l-1.78 1.781a4 4 0 00-4.95 4.95z" clip-rule="evenodd" /><path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.022 7 9.542 7 .847 0 1.669-.105 2.454-.303z" /></svg>
-                            </span>
-                        </div>
-                        <div class="flex items-center mb-3">
-                            <input id="include-nota" type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                            <label for="include-nota" class="ml-2 block text-sm text-gray-900">Include NOTA</label>
-                        </div>
-                        <div id="election-form-buttons" class="space-y-2">
-                           <button id="create-election-btn" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 rounded-lg">Create</button>
+
+                    <!-- Create Election Section -->
+                    <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+                        <h3 id="election-form-title" class="text-xl font-bold mb-6 flex items-center"><span class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center mr-3 text-sm">2</span> Define Election</h3>
+                        <div class="space-y-4">
+                            <input id="election-name" type="text" placeholder="Election Title" class="w-full p-3 rounded-xl input-dark">
+                            <div class="relative">
+                                <input id="election-password" type="password" placeholder="Access Password" class="w-full p-3 rounded-xl input-dark pr-12">
+                                <span id="toggle-password" class="absolute inset-y-0 right-0 pr-4 flex items-center cursor-pointer text-slate-500 hover:text-slate-300">
+                                    <svg id="eye-icon" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                    <svg id="eye-off-icon" class="h-6 w-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/></svg>
+                                </span>
+                            </div>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input id="include-nota" type="checkbox" class="w-5 h-5 rounded border-slate-700 bg-slate-950 text-blue-600 focus:ring-blue-600">
+                                <span class="text-sm text-slate-300">Include NOTA Option</span>
+                            </label>
+                            <div id="election-form-buttons">
+                                <button id="create-election-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-900/20 transition">Create Election</button>
+                            </div>
                         </div>
                     </div>
-                     <!-- Manage Elections -->
-                    <div class="bg-white p-6 rounded-xl shadow-md md:col-span-2 lg:col-span-3">
-                        <h3 class="text-xl font-bold mb-4">Manage Elections</h3>
-                        <div id="election-list" class="space-y-2"></div>
+
+                    <!-- Manage Elections List -->
+                    <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl overflow-hidden flex flex-col">
+                        <h3 class="text-xl font-bold mb-6">Existing Elections</h3>
+                        <div id="election-list" class="space-y-3 overflow-y-auto max-h-[300px] pr-2"></div>
                     </div>
                 </div>
 
-                <div id="active-election-section" class="mt-8 space-y-6 hidden">
-                    <h2 class="text-2xl font-bold border-b pb-2">Active Election: <span id="active-election-name" class="text-blue-600"></span></h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Add Candidates -->
-                        <div class="bg-white p-6 rounded-xl shadow-md">
-                            <h3 class="text-xl font-bold mb-4">3. Add Candidates</h3>
-                            <select id="candidate-class-select" class="w-full p-2 mb-3 border rounded"></select>
-                            <select id="candidate-name-select" class="w-full p-2 mb-3 border rounded"></select>
-                            <input id="candidate-gender" type="text" placeholder="Gender (auto-filled)" class="w-full p-2 mb-3 border rounded bg-gray-100" readonly>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Candidate Image</label>
-                            <input type="file" id="candidate-image-input" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
-                            <button id="add-candidate-btn" class="w-full mt-3 bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 rounded-lg">Add Candidate</button>
+                <!-- Active Election Management -->
+                <div id="active-election-section" class="mt-12 space-y-8 hidden">
+                    <div class="flex items-center space-x-4 border-b border-slate-800 pb-4">
+                        <h2 class="text-2xl font-bold">Active: <span id="active-election-name" class="text-blue-400"></span></h2>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
+                            <h3 class="text-xl font-bold mb-6 flex items-center"><span class="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center mr-3 text-sm">3</span> Add Candidate</h3>
+                            <div class="space-y-4">
+                                <select id="candidate-class-select" class="w-full p-3 rounded-xl input-dark"></select>
+                                <select id="candidate-name-select" class="w-full p-3 rounded-xl input-dark"></select>
+                                <input id="candidate-gender" type="text" placeholder="Gender" class="w-full p-3 rounded-xl input-dark opacity-60" readonly>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-400 mb-2">Photo Upload</label>
+                                    <input type="file" id="candidate-image-input" accept="image/*" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600/10 file:text-blue-400 hover:file:bg-blue-600/20"/>
+                                </div>
+                                <button id="add-candidate-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition">Add to Ballot</button>
+                            </div>
                         </div>
-                        <!-- Manage Candidates -->
-                        <div class="bg-white p-6 rounded-xl shadow-md">
-                            <h3 class="text-xl font-bold mb-4">Manage Candidates</h3>
-                            <div id="candidate-list" class="space-y-3 max-h-64 overflow-y-auto"></div>
+
+                        <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
+                            <h3 class="text-xl font-bold mb-6">Current Ballot</h3>
+                            <div id="candidate-list" class="space-y-4 max-h-[400px] overflow-y-auto pr-2"></div>
                         </div>
                     </div>
-                    <!-- Navigation to other sections -->
-                    <div class="bg-white p-6 rounded-xl shadow-md">
-                        <h3 class="text-xl font-bold mb-4">4. Election Process</h3>
-                        <div class="flex space-x-4">
-                            <button id="goto-voting-btn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg">Start Voting</button>
-                            <button id="goto-counting-btn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg">Start Counting</button>
-                            <button id="goto-reports-btn" class="flex-1 bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 rounded-lg">View Reports</button>
+
+                    <div class="bg-slate-900 p-8 rounded-3xl border border-blue-900/30 shadow-2xl shadow-blue-900/10">
+                        <h3 class="text-xl font-bold mb-6 flex items-center"><span class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3 text-sm">4</span> Operational Controls</h3>
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <button id="goto-voting-btn" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl transition shadow-lg shadow-blue-900/20">Launch Voting View</button>
+                            <button id="goto-counting-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-2xl transition shadow-lg shadow-indigo-900/20">Start counting</button>
+                            <button id="goto-reports-btn" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-2xl transition border border-slate-700">Analytics & Reports</button>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Data Management -->
-                <div class="mt-8 bg-white p-6 rounded-xl shadow-md">
-                    <h3 class="text-xl font-bold mb-4">Data Management</h3>
-                    <div class="flex space-x-4">
-                        <button id="export-data-btn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg">Export Data</button>
-                        <label for="import-data-input" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg text-center cursor-pointer">Import Data</label>
+
+                <!-- Backup and Restore -->
+                <div class="mt-12 bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
+                    <h3 class="text-xl font-bold mb-4">System Data Management</h3>
+                    <div class="grid sm:grid-cols-2 gap-4">
+                        <button id="export-data-btn" class="flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 py-3 px-6 rounded-xl border border-slate-700 transition">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4-4m4 4v12"></path></svg>
+                            Export Election Backup (.json)
+                        </button>
+                        <label for="import-data-input" class="flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 py-3 px-6 rounded-xl border border-slate-700 transition cursor-pointer">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            Restore Data from File
+                        </label>
                         <input type="file" id="import-data-input" class="hidden" accept=".json">
                     </div>
                 </div>
-
             </div>
             
-            <!-- STEP 6 & 7: Voting View -->
+            <!-- Voting Views -->
             <div id="voting-class-selection-view" class="view"></div>
             <div id="voting-screen-view" class="view" oncontextmenu="return false;"></div>
 
-            <!-- STEP 10 & 11: Counting View -->
+            <!-- Counting Views -->
             <div id="counting-class-selection-view" class="view"></div>
             <div id="counting-screen-view" class="view"></div>
 
-            <!-- STEP 12: Reports View -->
+            <!-- Reports View -->
             <div id="reports-view" class="view"></div>
         </main>
     </div>
 
-    <!-- Modal for confirmations, password prompts, and results -->
+    <!-- Modals -->
     <div id="modal" class="modal-backdrop hidden">
         <div id="modal-content" class="modal-content">
-            <h3 id="modal-title" class="text-xl font-bold mb-4"></h3>
-            <div id="modal-body" class="modal-body"></div>
-            <div id="modal-footer" class="mt-6 flex justify-end space-x-4">
-                <button id="modal-cancel-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancel</button>
-                <button id="modal-confirm-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Confirm</button>
+            <h3 id="modal-title" class="text-2xl font-bold mb-4"></h3>
+            <div id="modal-body" class="modal-body text-slate-300"></div>
+            <div id="modal-footer" class="mt-8 flex justify-end space-x-4">
+                <button id="modal-cancel-btn" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 px-6 rounded-xl transition">Cancel</button>
+                <button id="modal-confirm-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg shadow-blue-900/20 transition">Confirm</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal for Progress Bar -->
     <div id="progress-modal" class="modal-backdrop hidden">
-        <div class="modal-content">
-            <h3 id="progress-title" class="text-xl font-bold mb-4">Processing Student Data...</h3>
+        <div class="modal-content max-w-sm">
+            <h3 id="progress-title" class="text-xl font-bold mb-6">Processing Data...</h3>
             <div id="progress-body">
-                <p id="progress-text" class="text-center mb-2">Starting...</p>
-                <div class="w-full bg-gray-200 rounded-full h-4">
-                    <div id="progress-bar" class="bg-blue-600 h-4 rounded-full progress-bar" style="width: 0%"></div>
+                <p id="progress-text" class="text-center text-slate-400 mb-4 text-sm">Initializing...</p>
+                <div class="w-full bg-slate-950 rounded-full h-3">
+                    <div id="progress-bar" class="bg-blue-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
                 </div>
-                <p id="progress-eta" class="text-center text-sm text-gray-500 mt-2">Calculating time remaining...</p>
+                <p id="progress-eta" class="text-center text-xs text-slate-500 mt-4 italic"></p>
             </div>
         </div>
     </div>
@@ -266,7 +293,6 @@ document.addEventListener('DOMContentLoaded', () => {
         loggedIn: false,
     };
 
-    // This will hold the data from schools.json
     let schoolsData = [];
 
     // --- DOM ELEMENTS ---
@@ -333,12 +359,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- UTILITY FUNCTIONS ---
     const saveState = () => {
         try {
-            // Don't save images in localStorage
             const stateToSave = { ...appData };
             stateToSave.elections = appData.elections.map(election => {
                 const electionCopy = { ...election };
                 electionCopy.candidates = election.candidates.map(c => {
-                    const { image, ...rest } = c; // Exclude image property
+                    const { image, ...rest } = c;
                     return rest;
                 });
                 return electionCopy;
@@ -393,7 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const modalBody = document.getElementById('modal-body');
         modalBody.innerHTML = body;
         if (requiresInput) {
-            modalBody.innerHTML += `<input type="password" id="modal-password-input" class="w-full p-2 mt-4 border rounded">`;
+            modalBody.innerHTML += `<input type="password" id="modal-password-input" class="w-full p-3 mt-4 rounded-xl input-dark">`;
         }
 
         const confirmBtn = document.getElementById('modal-confirm-btn');
@@ -472,7 +497,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- STEP 2: SCHOOL SETUP ---
-    // Update school code/name listener to handle manual entry
     document.getElementById('school-code-input').addEventListener('input', (e) => {
         const code = e.target.value.trim();
         const schoolInfo = schoolsData.find(school => 
@@ -512,7 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // --- STEP 3: STUDENT DATA (Using Web Worker) ---
+    // --- STEP 3: STUDENT DATA ---
     document.getElementById('student-file-input').addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) startStudentProcessingWithWorker(file);
@@ -602,13 +626,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderAdminDashboard();
                 const classList = Object.keys(appData.classes).sort().join(', ');
                 showModal({
-                    title: "Student Data Processed Successfully",
-                    body: `<p><strong>Total Students:</strong> ${appData.students.length}</p><p><strong>Total Classes:</strong> ${Object.keys(appData.classes).length}</p><p class="mt-2"><strong>Classes Found:</strong> ${classList}</p>`,
+                    title: "Import Success",
+                    body: `<p><strong>Total Students:</strong> ${appData.students.length}</p><p><strong>Total Classes:</strong> ${Object.keys(appData.classes).length}</p>`,
                     cancelText: 'OK'
                 });
                 worker.terminate();
             } else if (type === 'error') {
-                showModal({ title: 'Error', body: 'An error occurred while processing the file: ' + message, cancelText: 'OK' });
+                showModal({ title: 'Error', body: 'Processing failed: ' + message, cancelText: 'OK' });
                 document.getElementById('progress-modal').classList.add('hidden');
                 worker.terminate();
             }
@@ -627,13 +651,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const buttonsContainer = document.getElementById('election-form-buttons');
         if (isEditing) {
             buttonsContainer.innerHTML = `
-                <button id="update-election-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-lg">Update</button>
-                <button id="cancel-update-btn" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 rounded-lg">Cancel</button>
+                <button id="update-election-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl transition mb-2">Update Election</button>
+                <button id="cancel-update-btn" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl border border-slate-700 transition">Cancel</button>
             `;
             document.getElementById('update-election-btn').onclick = () => updateElection(election.id);
             document.getElementById('cancel-update-btn').onclick = () => renderElectionForm();
         } else {
-            buttonsContainer.innerHTML = `<button id="create-election-btn" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 rounded-lg">Create</button>`;
+            buttonsContainer.innerHTML = `<button id="create-election-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition">Create Election</button>`;
             document.getElementById('create-election-btn').onclick = createElection;
         }
     };
@@ -654,7 +678,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             saveState();
             renderAdminDashboard();
-            renderElectionForm(); // Reset form
+            renderElectionForm();
         } else {
             showModal({ title: 'Error', body: 'Please provide both an election name and a password.', cancelText: 'OK' });
         }
@@ -676,7 +700,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const election = appData.elections.find(e => e.id === electionId);
         const isVotingStarted = Object.values(election.classStatus).some(s => s.status === 'voted' || s.status === 'counted');
         if (isVotingStarted) {
-            showModal({ title: 'Error', body: 'Cannot delete an election after voting has started.', cancelText: 'OK' });
+            showModal({ title: 'Restricted', body: 'Cannot delete an election after voting has started.', cancelText: 'OK' });
             return;
         }
         showModal({
@@ -699,21 +723,6 @@ document.addEventListener('DOMContentLoaded', () => {
         saveState();
         renderAdminDashboard();
     };
-
-    document.getElementById('toggle-password').addEventListener('click', () => {
-        const passwordInput = document.getElementById('election-password');
-        const eyeIcon = document.getElementById('eye-icon');
-        const eyeOffIcon = document.getElementById('eye-off-icon');
-        if (passwordInput.type === 'password') {
-            passwordInput.type = 'text';
-            eyeIcon.classList.add('hidden');
-            eyeOffIcon.classList.remove('hidden');
-        } else {
-            passwordInput.type = 'password';
-            eyeIcon.classList.remove('hidden');
-            eyeOffIcon.classList.add('hidden');
-        }
-    });
 
     // --- STEP 5: CANDIDATE MANAGEMENT ---
     const populateClassSelect = () => {
@@ -763,7 +772,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const newCandidate = {
-            id: Date.now().toString(), // Use string for ID consistency
+            id: Date.now().toString(),
             name,
             class: className,
             gender,
@@ -776,16 +785,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             election.candidates.push(newCandidate);
             saveState();
-            showModal({ title: 'Success', body: `Candidate ${name} added successfully.`, cancelText: 'OK' });
+            showModal({ title: 'Candidate Added', body: `${name} is now on the ballot for ${className}.`, cancelText: 'OK' });
             renderCandidateList();
             document.getElementById('candidate-class-select').value = 'Select a class';
             document.getElementById('candidate-name-select').innerHTML = '<option>Select a student</option>';
             document.getElementById('candidate-gender').value = '';
-            document.getElementById('candidate-image-input').value = '';
             document.getElementById('candidate-image-input').value = null;
         } catch (error) {
             console.error("Failed to add candidate image to DB:", error);
-            showModal({ title: 'Error', body: 'Could not save candidate image. The database might be full or corrupted.', cancelText: 'OK' });
+            showModal({ title: 'Storage Error', body: 'Could not save candidate image. The database might be full.', cancelText: 'OK' });
         }
     });
 
@@ -795,14 +803,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const classStatus = election.classStatus[candidate.class]?.status;
 
         if (classStatus === 'voted' || classStatus === 'counted') {
-            showModal({ title: 'Error', body: `Cannot delete candidate from Class ${candidate.class} as voting has already started or completed.`, cancelText: 'OK' });
+            showModal({ title: 'Restricted', body: `Cannot delete candidate from Class ${candidate.class} as voting has already started.`, cancelText: 'OK' });
             return;
         }
 
         showModal({
             title: 'Delete Candidate?',
-            body: `Are you sure you want to delete candidate "${candidate.name}"?`,
-            confirmText: 'Delete',
+            body: `Are you sure you want to remove ${candidate.name} from the ballot?`,
+            confirmText: 'Remove',
             onConfirm: async () => {
                 try {
                     if (candidate.hasImage) {
@@ -812,8 +820,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     saveState();
                     renderCandidateList();
                 } catch (error) {
-                    console.error("Failed to delete candidate image:", error);
-                    showModal({ title: 'Error', body: 'Could not delete candidate image from the database.', cancelText: 'OK' });
+                    showModal({ title: 'Error', body: 'Failed to delete data from storage.', cancelText: 'OK' });
                 }
             }
         });
@@ -841,30 +848,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderElectionList = () => {
         const listContainer = document.getElementById('election-list');
         if (appData.elections.length === 0) {
-            listContainer.innerHTML = '<p class="text-gray-500">No elections created yet.</p>';
+            listContainer.innerHTML = '<p class="text-slate-500 text-sm italic">No elections created.</p>';
             return;
         }
         listContainer.innerHTML = appData.elections.map(election => `
-            <div class="flex items-center justify-between p-3 rounded-lg ${appData.activeElectionId === election.id ? 'bg-blue-100 border border-blue-400' : 'bg-gray-100'}">
-                <span class="font-semibold">${election.name}</span>
-                <div class="space-x-2">
-                    <button class="select-election-btn text-sm py-1 px-3 rounded ${appData.activeElectionId === election.id ? 'bg-gray-500 text-white cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white'}" data-id="${election.id}" ${appData.activeElectionId === election.id ? 'disabled' : ''}>${appData.activeElectionId === election.id ? 'Selected' : 'Select'}</button>
-                    <button class="edit-election-btn text-sm py-1 px-3 rounded bg-yellow-500 hover:bg-yellow-600 text-white" data-id="${election.id}">Edit</button>
-                    <button class="delete-election-btn text-sm py-1 px-3 rounded bg-red-500 hover:bg-red-600 text-white" data-id="${election.id}">Delete</button>
+            <div class="flex items-center justify-between p-3 rounded-xl ${appData.activeElectionId === election.id ? 'bg-blue-600/20 border border-blue-500/50' : 'bg-slate-950 border border-slate-800'}">
+                <span class="font-semibold text-sm truncate mr-2">${election.name}</span>
+                <div class="flex space-x-1">
+                    <button class="select-election-btn text-xs py-1.5 px-3 rounded-lg ${appData.activeElectionId === election.id ? 'bg-blue-600 text-white cursor-not-allowed' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'}" data-id="${election.id}" ${appData.activeElectionId === election.id ? 'disabled' : ''}>${appData.activeElectionId === election.id ? 'Active' : 'Select'}</button>
+                    <button class="edit-election-btn p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700" data-id="${election.id}" title="Edit"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
+                    <button class="delete-election-btn p-1.5 rounded-lg bg-slate-800 hover:bg-rose-900/30 text-rose-500 border border-slate-700 hover:border-rose-900/50" data-id="${election.id}" title="Delete"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                 </div>
             </div>
         `).join('');
 
         listContainer.querySelectorAll('.select-election-btn').forEach(b => b.onclick = (e) => selectElection(e.target.dataset.id));
-        listContainer.querySelectorAll('.edit-election-btn').forEach(b => b.onclick = (e) => renderElectionForm(appData.elections.find(el => el.id.toString() === e.target.dataset.id)));
-        listContainer.querySelectorAll('.delete-election-btn').forEach(b => b.onclick = (e) => deleteElection(e.target.dataset.id));
+        listContainer.querySelectorAll('.edit-election-btn').forEach(b => b.onclick = (e) => renderElectionForm(appData.elections.find(el => el.id.toString() === e.currentTarget.dataset.id)));
+        listContainer.querySelectorAll('.delete-election-btn').forEach(b => b.onclick = (e) => deleteElection(e.currentTarget.dataset.id));
     };
 
     const renderCandidateList = () => {
         const election = getActiveElection();
         const listContainer = document.getElementById('candidate-list');
         if (!election || election.candidates.length === 0) {
-            listContainer.innerHTML = '<p class="text-gray-500">No candidates added to this election yet.</p>';
+            listContainer.innerHTML = '<p class="text-slate-500 text-sm italic">No candidates added.</p>';
             return;
         }
 
@@ -875,20 +882,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }, {});
 
         listContainer.innerHTML = Object.keys(candidatesByClass).sort().map(className => `
-            <div>
-                <h4 class="font-bold text-gray-700">${className}</h4>
-                <ul class="list-disc list-inside ml-4">
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                <h4 class="font-bold text-blue-400 text-sm mb-3 border-b border-slate-800 pb-2">${className}</h4>
+                <div class="space-y-2">
                     ${candidatesByClass[className].map(c => `
-                        <li class="flex justify-between items-center">
-                            <span>${c.name}</span>
-                            <button class="delete-candidate-btn text-xs text-red-500 hover:text-red-700" data-id="${c.id}">Delete</button>
-                        </li>
+                        <div class="flex justify-between items-center bg-slate-900 p-2 rounded-lg">
+                            <span class="text-sm font-medium text-slate-200">${c.name}</span>
+                            <button class="delete-candidate-btn text-rose-500 hover:text-rose-400 transition" data-id="${c.id}">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>
                     `).join('')}
-                </ul>
+                </div>
             </div>
         `).join('');
 
-        listContainer.querySelectorAll('.delete-candidate-btn').forEach(b => b.onclick = (e) => deleteCandidate(e.target.dataset.id));
+        listContainer.querySelectorAll('.delete-candidate-btn').forEach(b => b.onclick = (e) => deleteCandidate(e.currentTarget.dataset.id));
     };
     
     // --- NAVIGATION ---
@@ -913,19 +922,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const election = getActiveElection();
         const container = document.getElementById('voting-class-selection-view');
         container.innerHTML = `<h2 class="text-3xl font-bold mb-6">Start Voting for a Class</h2>
-            <button id="back-to-dash-1" class="mb-4 bg-gray-500 text-white p-2 rounded">Back to Dashboard</button>
+            <button id="back-to-dash-1" class="mb-4 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 px-6 rounded-xl border border-slate-700 transition">Back to Dashboard</button>
             <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 ${Object.keys(appData.classes).sort().map(className => {
                     const status = election.classStatus[className]?.status;
                     const isCompleted = status === 'voted' || status === 'counted';
                     return `
                         <button 
-                            class="p-4 rounded-lg shadow-md text-white font-bold text-xl ${isCompleted ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}"
+                            class="p-6 rounded-2xl shadow-xl font-bold text-xl transition transform hover:scale-105 ${isCompleted ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20'}"
                             data-class="${className}"
                             ${isCompleted ? 'disabled' : ''}
                         >
                             ${className}
-                            ${isCompleted ? '<br><span class="text-sm font-normal">Completed</span>' : ''}
+                            ${isCompleted ? '<br><span class="text-xs font-normal opacity-60 uppercase tracking-widest mt-1 block">Voted</span>' : ''}
                         </button>
                     `;
                 }).join('')}
@@ -936,14 +945,14 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.addEventListener('click', (e) => {
                 const className = e.currentTarget.dataset.class;
                 showModal({
-                    title: `Start Election for Class ${className}`,
-                    body: `Please enter the election security password.`,
+                    title: `Begin Class ${className}`,
+                    body: `Enter security password to initialize voting booth.`,
                     requiresInput: true,
                     onConfirm: (password) => {
                         if (password === election.password) {
                             startVotingForClass(className);
                         } else {
-                            showModal({ title: 'Error', body: 'Incorrect password.', cancelText: 'OK' });
+                            showModal({ title: 'Access Denied', body: 'The password entered is incorrect.', cancelText: 'OK' });
                         }
                     }
                 });
@@ -960,7 +969,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         renderVotingScreen();
         showView('voting-screen-view');
-        enterFullScreen(document.documentElement); // Enter fullscreen
+        enterFullScreen(document.documentElement);
     };
 
     const renderVotingScreen = async () => {
@@ -976,67 +985,65 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (totalCandidates > 6) gridClass = 'grid-cols-4';
         else if (totalCandidates > 4) gridClass = 'grid-cols-3';
 
-        let cardSizeClass = 'p-2';
+        let cardSizeClass = 'p-3';
         let imageSizeClass = 'w-24 h-24 md:w-32 md:h-32';
         let textSizeClass = 'text-lg';
 
         if (totalCandidates <= 4) {
-            cardSizeClass = 'p-6';
-            imageSizeClass = 'w-32 h-32 md:w-48 md:h-48';
-            textSizeClass = 'text-2xl';
+            cardSizeClass = 'p-8';
+            imageSizeClass = 'w-40 h-40 md:w-56 md:h-56';
+            textSizeClass = 'text-3xl';
         } else if (totalCandidates <= 9) {
-            cardSizeClass = 'p-4';
-            imageSizeClass = 'w-24 h-24 md:w-32 md:h-32';
-            textSizeClass = 'text-xl';
+            cardSizeClass = 'p-6';
+            imageSizeClass = 'w-28 h-28 md:w-40 md:h-40';
+            textSizeClass = 'text-2xl';
         }
 
         let notaCardHTML = '';
         if (election.includeNota) {
             notaCardHTML = `
-                <div class="candidate-card bg-gray-200 rounded-2xl shadow-lg text-center cursor-pointer transition-transform transform hover:scale-105 flex flex-col items-center justify-center ${cardSizeClass}" data-candidate-id="NOTA">
-                    <div class="${imageSizeClass} mx-auto rounded-full bg-gray-300 flex items-center justify-center border-4 border-gray-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <div class="candidate-card bg-slate-900 border-2 border-slate-800 rounded-3xl text-center cursor-pointer transition-transform transform hover:scale-105 flex flex-col items-center justify-center ${cardSizeClass}" data-candidate-id="NOTA">
+                    <div class="${imageSizeClass} mx-auto rounded-full bg-slate-800 flex items-center justify-center border-4 border-slate-700">
+                        <svg class="h-20 w-20 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                         </svg>
                     </div>
-                    <h3 class="mt-2 ${textSizeClass} font-bold">NOTA</h3>
+                    <h3 class="mt-4 ${textSizeClass} font-bold text-slate-400">NOTA</h3>
                 </div>
             `;
         }
 
         container.innerHTML = `
-            <div class="text-center pt-4">
-                <h2 class="text-4xl font-bold">Voting for Class ${className}</h2>
-                <p id="voter-counter" class="text-2xl mt-2 text-gray-600">Voter ${appData.currentVoterIndex + 1} of ${totalVoters}</p>
-                <p class="text-lg mt-4">Click on the candidate of your choice.</p>
+            <div class="text-center pt-8 mb-8">
+                <h2 class="text-5xl font-black text-blue-400 mb-2">${className} Election</h2>
+                <p id="voter-counter" class="text-2xl text-slate-500">Student ${appData.currentVoterIndex + 1} of ${totalVoters}</p>
             </div>
-            <div id="candidate-cards" class="grid ${gridClass}">
+            <div id="candidate-cards" class="grid ${gridClass} max-w-7xl mx-auto">
                 ${candidates.map(c => `
-                    <div class="candidate-card bg-white rounded-2xl shadow-lg text-center cursor-pointer transition-transform transform hover:scale-105 flex flex-col items-center justify-center ${cardSizeClass}" data-candidate-id="${c.id}">
-                        <img id="img-${c.id}" src="" alt="${c.name}" class="${imageSizeClass} mx-auto rounded-full object-cover border-4 border-gray-200 bg-gray-200">
-                        <h3 class="mt-2 ${textSizeClass} font-bold">${c.name}</h3>
+                    <div class="candidate-card bg-slate-900 border-2 border-slate-800 rounded-3xl text-center cursor-pointer transition-transform transform hover:scale-105 flex flex-col items-center justify-center ${cardSizeClass}" data-candidate-id="${c.id}">
+                        <img id="img-${c.id}" src="" alt="${c.name}" class="${imageSizeClass} mx-auto rounded-full object-cover border-4 border-slate-800 bg-slate-800">
+                        <h3 class="mt-4 ${textSizeClass} font-bold text-white">${c.name}</h3>
                     </div>
                 `).join('')}
                 ${notaCardHTML}
             </div>
-            <div id="vote-cast-overlay" class="hidden fixed inset-0 bg-black bg-opacity-75 flex flex-col justify-center items-center text-white z-50">
-                <h2 class="text-5xl font-bold">Vote Cast!</h2>
-                <p class="text-2xl mt-4">Please wait for the admin to continue.</p>
+            <div id="vote-cast-overlay" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col justify-center items-center text-white z-50">
+                <div class="bg-emerald-500 rounded-full p-6 mb-8 shadow-2xl shadow-emerald-900/40">
+                    <svg class="w-20 h-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <h2 class="text-6xl font-black mb-4">Vote Recorded</h2>
+                <p class="text-2xl text-slate-400">Please leave the booth. Advance with TAB.</p>
             </div>
         `;
 
-        // Asynchronously load images
         for (const c of candidates) {
             const imgElement = document.getElementById(`img-${c.id}`);
             if (c.hasImage) {
                 db.getImage(c.id).then(imageBlob => {
-                    if (imageBlob) {
-                        imgElement.src = URL.createObjectURL(imageBlob);
-                    }
+                    if (imageBlob) imgElement.src = URL.createObjectURL(imageBlob);
                 });
             } else {
-                const gender = c.gender?.toLowerCase() || '';
-                imgElement.src = gender.startsWith('f') ? femaleIcon : maleIcon;
+                imgElement.src = c.gender?.toLowerCase().startsWith('f') ? femaleIcon : maleIcon;
             }
         }
 
@@ -1067,8 +1074,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const election = getActiveElection();
         exitFullScreen();
         showModal({
-            title: `End Election for Class ${appData.currentVotingClass}`,
-            body: `Please enter the election security password to confirm.`,
+            title: `Close Booth: ${appData.currentVotingClass}`,
+            body: `Verify admin password to finalize this class results.`,
             requiresInput: true,
             onConfirm: (password) => {
                 if (password === election.password) {
@@ -1083,7 +1090,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // Keyboard listener for admin
     document.addEventListener('keydown', (e) => {
         if (document.getElementById('voting-screen-view').classList.contains('active-view')) {
             const election = getActiveElection();
@@ -1095,10 +1101,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (appData.currentVoterIndex < totalVoters) {
                         renderVotingScreen();
                     } else {
-                        document.getElementById('voter-counter').innerHTML = '<span class="text-green-600 font-bold">All students have voted! Press ESC to finish.</span>';
+                        document.getElementById('voter-counter').innerHTML = '<span class="text-emerald-400 font-black animate-pulse">VOTING COMPLETE - ESC TO EXIT</span>';
                     }
-                } else {
-                    showModal({ title: 'Wait', body: "The current voter hasn't voted yet.", cancelText: 'OK' });
                 }
             } else if (e.key === 'Escape') {
                 e.preventDefault();
@@ -1107,13 +1111,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.addEventListener('fullscreenchange', () => {
-        if (!document.fullscreenElement && document.getElementById('voting-screen-view').classList.contains('active-view')) {
-            endVotingSession();
-        }
-    });
-
-
     // --- STEP 10 & 11: COUNTING PROCESS ---
     const renderCountingClassSelection = () => {
         const election = getActiveElection();
@@ -1121,46 +1118,34 @@ document.addEventListener('DOMContentLoaded', () => {
         const allVoted = Object.keys(appData.classes).every(c => election.classStatus[c]?.status === 'voted' || election.classStatus[c]?.status === 'counted');
         
         container.innerHTML = `
-            <h2 class="text-3xl font-bold mb-6">Start Counting for a Class</h2>
-            <button id="back-to-dash-2" class="mb-4 bg-gray-500 text-white p-2 rounded">Back to Dashboard</button>
-            ${!allVoted ? `<div class="p-4 mb-4 bg-yellow-100 text-yellow-800 rounded-lg">Note: Not all classes have completed voting.</div>` : ''}
+            <h2 class="text-3xl font-bold mb-6 text-white">Counting Hub</h2>
+            <button id="back-to-dash-2" class="mb-6 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 px-6 rounded-xl border border-slate-700 transition">Dashboard</button>
             <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 ${Object.keys(appData.classes).sort().map(className => {
                     const status = election.classStatus[className]?.status;
                     const canCount = status === 'voted';
                     const isCounted = status === 'counted';
-                    let btnClass = 'bg-gray-400 cursor-not-allowed';
-                    if (canCount) btnClass = 'bg-purple-600 hover:bg-purple-700';
-                    if (isCounted) btnClass = 'bg-gray-400 cursor-not-allowed';
-
                     return `
                         <button 
-                            class="p-4 rounded-lg shadow-md text-white font-bold text-xl ${btnClass}"
+                            class="p-6 rounded-2xl shadow-xl font-bold text-xl transition transform hover:scale-105 ${canCount ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-900/20' : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-50'}"
                             data-class="${className}"
                             ${!canCount ? 'disabled' : ''}
                         >
                             ${className}
-                            ${isCounted ? '<br><span class="text-sm font-normal">Counted</span>' : ''}
+                            ${isCounted ? '<br><span class="text-xs opacity-60">FINISHED</span>' : ''}
                         </button>
                     `;
                 }).join('')}
-            </div>
-        `;
+            </div>`;
+
         container.querySelector('#back-to-dash-2').addEventListener('click', () => showView('admin-dashboard-view'));
         container.querySelectorAll('button[data-class]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const className = e.currentTarget.dataset.class;
                 showModal({
-                    title: `Start Counting for Class ${className}`,
-                    body: `Please enter the election security password.`,
-                    requiresInput: true,
-                    onConfirm: (password) => {
-                        if (password === election.password) {
-                            startCountingForClass(className);
-                        } else {
-                            showModal({ title: 'Error', body: 'Incorrect password.', cancelText: 'OK' });
-                        }
-                    }
+                    title: `Start Counting ${className}`,
+                    body: `Initialize automated vote counting process?`,
+                    onConfirm: () => startCountingForClass(className)
                 });
             });
         });
@@ -1169,7 +1154,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const startCountingForClass = (className) => {
         renderCountingScreen(className);
         showView('counting-screen-view');
-        enterFullScreen(document.documentElement); // Enter fullscreen
+        enterFullScreen(document.documentElement);
     };
 
     const renderCountingScreen = (className) => {
@@ -1186,57 +1171,51 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (totalCandidates > 4) gridClass = 'grid-cols-3';
 
         container.innerHTML = `
-            <div class="text-center pt-4">
-                <h2 class="text-4xl font-bold">Counting Votes for Class ${className}</h2>
-                <p id="counting-status" class="text-2xl mt-2 text-gray-600">Ready to start counting.</p>
-                <button id="begin-counting-btn" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg text-xl">Begin Counting</button>
+            <div class="text-center pt-8">
+                <h2 class="text-5xl font-black text-indigo-400 mb-2">Counting: ${className}</h2>
+                <p id="counting-status" class="text-2xl text-slate-500">System Ready</p>
+                <button id="begin-counting-btn" class="mt-8 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 px-12 rounded-2xl text-xl shadow-2xl shadow-emerald-900/30 transition transform hover:scale-105">Initiate Tally</button>
             </div>
-            <div id="counting-candidate-list" class="grid ${gridClass} gap-4 p-4 mt-8">
+            <div id="counting-candidate-list" class="grid ${gridClass} gap-6 max-w-7xl mx-auto p-6 mt-8">
                 ${candidates.map(c => `
-                    <div class="candidate-result-item flex flex-col items-center bg-white p-4 rounded-lg shadow" data-candidate-id="${c.id}" data-votes="0">
-                        <img id="img-count-${c.id}" src="" class="w-24 h-24 rounded-full mb-2 object-cover bg-gray-200">
-                        <h3 class="text-xl font-bold text-center">${c.name}</h3>
-                        <div class="w-full bg-gray-200 rounded-full h-4 mt-2">
-                            <div class="bg-blue-600 h-4 rounded-full progress-bar" style="width: 0%;"></div>
+                    <div class="candidate-result-item flex flex-col items-center bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl" data-candidate-id="${c.id}" data-votes="0">
+                        <img id="img-count-${c.id}" src="" class="w-32 h-32 rounded-full mb-4 object-cover border-4 border-slate-800 bg-slate-800">
+                        <h3 class="text-xl font-bold text-center text-white mb-4 line-clamp-1">${c.name}</h3>
+                        <div class="w-full bg-slate-950 rounded-full h-4 relative">
+                            <div class="bg-indigo-500 h-4 rounded-full progress-bar shadow-lg shadow-indigo-900/40" style="width: 0%;"></div>
                         </div>
-                        <div class="text-3xl font-bold mt-2" id="vote-count-${c.id}">0</div>
+                        <div class="text-5xl font-black mt-6 text-indigo-400" id="vote-count-${c.id}">0</div>
                     </div>
                 `).join('')}
                 ${election.includeNota ? `
-                    <div class="candidate-result-item flex flex-col items-center bg-gray-100 p-4 rounded-lg shadow" data-candidate-id="NOTA" data-votes="0">
-                         <div class="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center border-4 border-gray-400 mb-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                            </svg>
+                    <div class="candidate-result-item flex flex-col items-center bg-slate-900/50 p-6 rounded-3xl border border-slate-800 shadow-xl" data-candidate-id="NOTA" data-votes="0">
+                         <div class="w-32 h-32 rounded-full bg-slate-800 flex items-center justify-center border-4 border-slate-700 mb-4">
+                            <svg class="h-16 w-16 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
                         </div>
-                        <h3 class="text-xl font-bold text-center">NOTA</h3>
-                        <div class="w-full bg-gray-200 rounded-full h-4 mt-2">
-                            <div class="bg-gray-500 h-4 rounded-full progress-bar" style="width: 0%;"></div>
+                        <h3 class="text-xl font-bold text-center text-slate-400 mb-4 uppercase tracking-tighter">NOTA</h3>
+                        <div class="w-full bg-slate-950 rounded-full h-4">
+                            <div class="bg-slate-600 h-4 rounded-full progress-bar" style="width: 0%;"></div>
                         </div>
-                        <div class="text-3xl font-bold mt-2" id="vote-count-NOTA">0</div>
+                        <div class="text-5xl font-black mt-6 text-slate-500" id="vote-count-NOTA">0</div>
                     </div>
                 ` : ''}
             </div>
         `;
 
-        // Asynchronously load images
         for (const c of candidates) {
             const imgElement = document.getElementById(`img-count-${c.id}`);
              if (c.hasImage) {
                 db.getImage(c.id).then(imageBlob => {
-                    if (imageBlob) {
-                        imgElement.src = URL.createObjectURL(imageBlob);
-                    }
+                    if (imageBlob) imgElement.src = URL.createObjectURL(imageBlob);
                 });
             } else {
-                const gender = c.gender?.toLowerCase() || '';
-                imgElement.src = gender.startsWith('f') ? femaleIcon : maleIcon;
+                imgElement.src = c.gender?.toLowerCase().startsWith('f') ? femaleIcon : maleIcon;
             }
         }
 
         document.getElementById('begin-counting-btn').addEventListener('click', (e) => {
             e.target.disabled = true;
-            e.target.textContent = 'Counting...';
+            e.target.classList.add('opacity-0', 'pointer-events-none');
             animateCounting(className);
         });
     };
@@ -1250,7 +1229,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const interval = setInterval(() => {
             if (i >= totalVotes) {
                 clearInterval(interval);
-                document.getElementById('counting-status').textContent = 'Counting Complete!';
+                document.getElementById('counting-status').textContent = 'Counting Complete';
                 setTimeout(() => {
                     exitFullScreen();
                     showResultModal(className);
@@ -1260,12 +1239,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const vote = votes[i];
             const candidateId = vote.candidateId.toString();
-            document.getElementById('counting-status').textContent = `Counting vote ${i + 1} of ${totalVotes}`;
+            document.getElementById('counting-status').textContent = `Processing vote ${i + 1}/${totalVotes}`;
 
             const candidateCard = document.querySelector(`.candidate-result-item[data-candidate-id='${candidateId}']`);
             
             if (candidateCard) {
-                // Fixed increment logic
                 const countDisplay = document.getElementById(`vote-count-${candidateId}`);
                 const currentVotes = parseInt(candidateCard.dataset.votes) + 1;
                 candidateCard.dataset.votes = currentVotes;
@@ -1275,7 +1253,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const percentage = totalVotes > 0 ? (currentVotes / totalVotes) * 100 : 0;
                 progressBar.style.width = `${percentage}%`;
                 
-                // Animate 
                 const voteEl = document.createElement('div');
                 voteEl.innerHTML = '🗳️';
                 voteEl.className = 'counting-vote';
@@ -1285,7 +1262,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 voteEl.style.top = (window.innerHeight - 50) + 'px';
                 
                 setTimeout(() => {
-                    voteEl.style.transform = `translate(${rect.left - window.innerWidth/2 + rect.width/2}px, ${rect.top - window.innerHeight + 50}px) scale(1.5)`;
+                    voteEl.style.transform = `translate(${rect.left - window.innerWidth/2 + rect.width/2}px, ${rect.top - window.innerHeight + 50}px) scale(2)`;
                     voteEl.style.opacity = 0;
                 }, 50);
 
@@ -1295,7 +1272,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             i++;
-        }, 800);
+        }, 300);
     };
 
     const showResultModal = (className) => {
@@ -1324,19 +1301,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const tiedCandidates = sortedResults.filter(c => c.count === winner.count);
             const body = `
                 <div id="draw-container" class="text-center">
-                    <h2 class="text-2xl font-bold text-red-600">It's a Draw!</h2>
-                    <p class="my-2">The following candidates have tied:</p>
-                    <ul class="list-disc list-inside mb-4">
-                        ${tiedCandidates.map(c => `<li><strong>${c.name}</strong> (${c.count} votes)</li>`).join('')}
-                    </ul>
-                    <p>Do you want to select a winner randomly?</p>
+                    <h2 class="text-3xl font-black text-rose-500 mb-6">TIE DETECTED</h2>
+                    <p class="mb-4">The following candidates received identical vote counts:</p>
+                    <div class="space-y-2 mb-8">
+                        ${tiedCandidates.map(c => `<div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xl font-bold">${c.name} <span class="text-indigo-400">(${c.count})</span></div>`).join('')}
+                    </div>
+                    <p class="text-slate-400">Would you like to resolve this tie by selecting a winner at random?</p>
                 </div>
             `;
 
             showModal({
-                title: `Tie Breaker for Class ${className}`,
+                title: `Tie Breaker: ${className}`,
                 body: body,
-                confirmText: 'Yes, Select Winner',
+                confirmText: 'Resolve Randomly',
                 onConfirm: () => {
                     const randomIndex = Math.floor(Math.random() * tiedCandidates.length);
                     const finalWinner = tiedCandidates[randomIndex];
@@ -1344,7 +1321,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     saveState();
                     showWinnerModal(className, finalWinner, sortedResults, notaVotes, true);
                 },
-                cancelText: 'Close',
+                cancelText: 'Handle Manually',
                 onCancel: () => {
                     renderCountingClassSelection();
                     showView('counting-class-selection-view');
@@ -1360,47 +1337,58 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const showWinnerModal = (className, winner, sortedResults, notaVotes, wasTie) => {
+    const showWinnerModal = async (className, winner, sortedResults, notaVotes, wasTie) => {
         const election = getActiveElection();
         const totalVotes = election.votes[className].length;
-        let tieBreakerMessage = wasTie ? `<p class="text-sm text-yellow-600 font-semibold">(Won by random tie-breaker)</p>` : '';
+        let tieBreakerMessage = wasTie ? `<p class="text-sm text-amber-500 font-bold mb-4 uppercase tracking-widest">Selected by tie-breaker algorithm</p>` : '';
         
         let voteLead = '';
         if (winner && sortedResults.length > 1) {
             const lead = sortedResults[0].count - sortedResults[1].count;
             if (lead > 0) {
-                voteLead = `<p class="text-md mt-1">(Lead by ${lead} vote${lead > 1 ? 's' : ''})</p>`;
+                voteLead = `<div class="mt-4 bg-emerald-500/10 text-emerald-400 py-2 px-6 rounded-full text-lg font-bold inline-block border border-emerald-500/20">Victory Lead: ${lead} Vote${lead > 1 ? 's' : ''}</div>`;
             }
         }
 
         let body = '';
         if (winner && winner.count > 0) {
              body = `
-                <div class="text-center">
-                    <img id="winner-img" src="" class="w-32 h-32 mx-auto rounded-full object-cover border-4 border-green-400 bg-gray-200">
-                    <h2 class="text-2xl font-bold mt-4">Congratulations, ${winner.name}!</h2>
+                <div class="text-center py-6">
+                    <img id="winner-img" src="" class="w-48 h-48 mx-auto rounded-full object-cover border-8 border-emerald-500 shadow-2xl shadow-emerald-900/30 mb-6">
+                    <h2 class="text-4xl font-black text-white mb-2">${winner.name}</h2>
                     ${tieBreakerMessage}
-                    <p class="text-lg text-gray-700">Selected as the representative for Class ${className}.</p>
-                    <p class="text-xl font-semibold mt-2">${winner.count} Votes (${totalVotes > 0 ? ((winner.count/totalVotes)*100).toFixed(1) : 0}%)</p>
+                    <p class="text-xl text-slate-400 mb-2">Elected Representative for <strong>${className}</strong></p>
+                    <p class="text-3xl font-black text-indigo-400">${winner.count} Total Votes</p>
                     ${voteLead}
                 </div>
             `;
         } else {
-             body = `<h2 class="text-2xl font-bold text-center">No Winner Declared</h2><p class="text-center mt-2">No votes were cast for any candidate.</p>`;
+             body = `<h2 class="text-3xl font-black text-center text-rose-500 py-12">NO WINNER DECLARED</h2><p class="text-center text-slate-400">No candidates received votes in this session.</p>`;
         }
         
-        body += '<hr class="my-4"><h4 class="font-bold mb-2">Full Results:</h4>';
-        sortedResults.forEach(r => {
-            body += `<p>${r.name}: ${r.count} votes</p>`;
-        });
-        if (election.includeNota) {
-            body += `<p>NOTA: ${notaVotes} votes</p>`;
-        }
+        body += `
+            <div class="mt-8 bg-slate-950 p-6 rounded-3xl border border-slate-800">
+                <h4 class="font-bold text-sm text-slate-500 uppercase tracking-widest mb-4">Complete Tally</h4>
+                <div class="space-y-3">
+                    ${sortedResults.map(r => `
+                        <div class="flex justify-between items-center text-lg">
+                            <span class="text-slate-300">${r.name}</span>
+                            <span class="font-bold text-white">${r.count}</span>
+                        </div>
+                    `).join('')}
+                    ${election.includeNota ? `
+                        <div class="flex justify-between items-center text-lg opacity-60">
+                            <span class="text-slate-500 italic">NOTA</span>
+                            <span class="font-bold text-slate-500">${notaVotes}</span>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>`;
 
         showModal({
-            title: `Results for Class ${className}`,
+            title: `Certification of Results`,
             body: body,
-            cancelText: 'OK',
+            cancelText: 'Close Results',
             onCancel: () => {
                 renderCountingClassSelection();
                 showView('counting-class-selection-view');
@@ -1410,12 +1398,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (winner) {
             const imgElement = document.getElementById('winner-img');
             if (winner.hasImage) {
-                db.getImage(winner.id).then(imageBlob => {
-                    if(imageBlob) imgElement.src = URL.createObjectURL(imageBlob);
-                });
+                const blob = await db.getImage(winner.id);
+                if(blob) imgElement.src = URL.createObjectURL(blob);
             } else {
-                const gender = winner.gender?.toLowerCase() || '';
-                imgElement.src = gender.startsWith('f') ? femaleIcon : maleIcon;
+                imgElement.src = winner.gender?.toLowerCase().startsWith('f') ? femaleIcon : maleIcon;
             }
         }
     }
@@ -1425,14 +1411,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const election = getActiveElection();
         const container = document.getElementById('reports-view');
         container.innerHTML = `
-            <h2 class="text-3xl font-bold mb-6">Election Reports</h2>
-            <button id="back-to-dash-3" class="mb-4 bg-gray-500 text-white p-2 rounded">Back to Dashboard</button>
-            <div class="bg-white p-6 rounded-xl shadow-md space-y-4">
-                <p>Generate PDF reports for the election: <strong>${election.name}</strong></p>
-                <div class="flex flex-col space-y-3">
-                    <button id="report-candidates-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg">Generate Candidate List</button>
-                    <button id="report-winners-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg">Generate Winner's List</button>
-                    <button id="report-detailed-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg">Generate Detailed Report</button>
+            <h2 class="text-3xl font-bold mb-6 text-white">Election Intelligence</h2>
+            <button id="back-to-dash-3" class="mb-8 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 px-6 rounded-xl border border-slate-700 transition">Dashboard</button>
+            <div class="grid gap-6">
+                <div class="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-2xl">
+                    <p class="text-slate-400 mb-8">Generate certified PDF documentation for the election: <strong class="text-white">${election.name}</strong></p>
+                    <div class="grid sm:grid-cols-3 gap-4">
+                        <button id="report-candidates-btn" class="bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-2xl border border-slate-700 transition">Candidate List</button>
+                        <button id="report-winners-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl transition shadow-lg shadow-blue-900/20">Winners Registry</button>
+                        <button id="report-detailed-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-2xl transition shadow-lg shadow-indigo-900/20">Audit Report</button>
+                    </div>
                 </div>
             </div>
         `;
@@ -1448,9 +1436,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const doc = new jsPDF();
         
         doc.setFontSize(18);
-        doc.text(`${appData.school.name} - Candidate List`, 14, 22);
+        doc.text(`${appData.school.name} - Candidate Registry`, 14, 22);
         doc.setFontSize(12);
-        doc.text(`Report for: ${election.name}`, 14, 30);
+        doc.text(`Election: ${election.name}`, 14, 30);
         let startY = 40;
 
         const candidatesByClass = election.candidates.reduce((acc, c) => {
@@ -1468,15 +1456,12 @@ document.addEventListener('DOMContentLoaded', () => {
             for(const c of candidatesByClass[className]) {
                 let imageSrc = '';
                 if (c.hasImage) {
-                    const imageBlob = await db.getImage(c.id);
-                    if (imageBlob) {
+                    const blob = await db.getImage(c.id);
+                    if (blob) {
                         const reader = new FileReader();
                         await new Promise(resolve => {
-                            reader.onload = (e) => {
-                                imageSrc = e.target.result;
-                                resolve();
-                            };
-                            reader.readAsDataURL(imageBlob);
+                            reader.onload = (e) => { imageSrc = e.target.result; resolve(); };
+                            reader.readAsDataURL(blob);
                         });
                     }
                 } else {
@@ -1486,10 +1471,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     await new Promise(resolve => {
                        img.onload = () => {
                            const canvas = document.createElement('canvas');
-                           canvas.width = img.width;
-                           canvas.height = img.height;
+                           canvas.width = 100; canvas.height = 100;
                            const ctx = canvas.getContext('2d');
-                           ctx.drawImage(img, 0, 0);
+                           ctx.drawImage(img, 0, 0, 100, 100);
                            imageSrc = canvas.toDataURL('image/png');
                            resolve();
                        }
@@ -1499,199 +1483,73 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             doc.autoTable({
-                head: [['Photo', 'Candidate Name', 'Gender']],
+                head: [['Icon', 'Name', 'Gender']],
                 body: tableData,
                 startY: startY,
                 theme: 'grid',
                 columnStyles: { 0: { cellWidth: 15 } },
-                didParseCell: function (data) {
-                    if (data.section === 'body') {
-                        data.cell.styles.minCellHeight = 15;
-                    }
-                },
+                didParseCell: (d) => { if (d.section === 'body') d.cell.styles.minCellHeight = 15; },
                 didDrawCell: (data) => {
                     if (data.column.index === 0 && data.cell.section === 'body' && data.cell.raw.image) {
-                        const imgData = data.cell.raw.image;
                         const y = data.cell.y + (data.cell.height - 10) / 2;
-                        doc.addImage(imgData, 'PNG', data.cell.x + 2.5, y, 10, 10);
+                        doc.addImage(data.cell.raw.image, 'PNG', data.cell.x + 2.5, y, 10, 10);
                     }
                 }
             });
             startY = doc.lastAutoTable.finalY + 15;
         }
-
-        doc.save(`Candidate_List_${election.name}.pdf`);
+        doc.save(`Candidate_Registry_${election.name}.pdf`);
     };
 
     const generateWinnersReport = () => {
         const election = getActiveElection();
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        
         doc.setFontSize(18);
         doc.text(`${appData.school.name} - Election Winners`, 14, 22);
         doc.setFontSize(12);
-        doc.text(`Report for: ${election.name}`, 14, 30);
-
+        doc.text(`Official Winners Registry: ${election.name}`, 14, 30);
         const tableData = [];
-        const headers = [['Class', 'Representative', 'Votes Received']];
-
         Object.keys(appData.classes).sort().forEach(className => {
             const classInfo = election.classStatus[className];
             if (classInfo?.status === 'counted') {
                 const winnerId = classInfo.winnerId;
                 const winner = election.candidates.find(c => c.id === winnerId);
-                
                 if (winner) {
                     const votes = election.votes[className] || [];
-                    const winnerVoteCount = votes.filter(v => v.candidateId == winner.id).length;
-                    
-                    const tiedCandidates = election.candidates
-                        .filter(c => c.class === className)
-                        .map(c => ({
-                            name: c.name,
-                            count: votes.filter(v => v.candidateId == c.id).length
-                        }))
-                        .filter(c => c.count === winnerVoteCount);
-
-                    let winnerName = winner.name;
-                    if (tiedCandidates.length > 1) {
-                        winnerName += " (Won by Tie-Breaker)";
-                    }
-
-                    tableData.push([
-                        className,
-                        winnerName,
-                        winnerVoteCount
-                    ]);
-                } else {
-                     tableData.push([ className, "No Winner", "N/A"]);
+                    const winnerCount = votes.filter(v => v.candidateId == winner.id).length;
+                    tableData.push([className, winner.name, winnerCount]);
                 }
             }
         });
-
-        doc.autoTable({
-            head: headers,
-            body: tableData,
-            startY: 40
-        });
-
-        doc.save(`Winners_Report_${election.name}.pdf`);
+        doc.autoTable({ head: [['Class', 'Representative Elect', 'Votes']], body: tableData, startY: 40 });
+        doc.save(`Winners_List_${election.name}.pdf`);
     };
 
     const generateDetailedReport = () => {
         const election = getActiveElection();
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        
         doc.setFontSize(18);
-        doc.text(`${appData.school.name} - Detailed Election Report`, 14, 22);
-        doc.setFontSize(12);
-        doc.text(`Report for: ${election.name}`, 14, 30);
+        doc.text(`${appData.school.name} - Detailed Audit`, 14, 22);
         let startY = 40;
-
         Object.keys(appData.classes).sort().forEach(className => {
             const classInfo = election.classStatus[className];
             if (classInfo?.status === 'counted') {
                 const totalVoters = appData.classes[className].length;
                 const votes = election.votes[className] || [];
-                const totalVotesCast = votes.length;
-                const votePercentage = totalVoters > 0 ? ((totalVotesCast / totalVoters) * 100).toFixed(1) : 0;
-                
                 doc.setFontSize(14);
-                doc.text(`Class: ${className}`, 14, startY);
+                doc.text(`Class: ${className} (${votes.length}/${totalVoters} Voted)`, 14, startY);
                 startY += 7;
-                doc.setFontSize(10);
-                doc.text(`Total Students: ${totalVoters} | Votes Cast: ${totalVotesCast} (${votePercentage}%)`, 14, startY);
-                startY += 5;
-
                 const candidates = election.candidates.filter(c => c.class === className);
-                const results = {};
-                candidates.forEach(c => results[c.id] = { ...c, count: 0 });
-                let notaVotes = 0;
-                votes.forEach(v => {
-                    if (v.candidateId === 'NOTA') {
-                        notaVotes++;
-                    } else if (results[v.candidateId]) {
-                        results[v.candidateId].count++;
-                    }
-                });
-                const sorted = Object.values(results).sort((a,b) => b.count - a.count);
-                
-                const tableData = sorted.map(c => [
-                    c.name,
-                    c.count,
-                    totalVotesCast > 0 ? ((c.count / totalVotesCast) * 100).toFixed(1) + '%' : '0%'
-                ]);
-
-                if (election.includeNota) {
-                    tableData.push(['NOTA', notaVotes, totalVotesCast > 0 ? ((notaVotes / totalVotesCast) * 100).toFixed(1) + '%' : '0%']);
-                }
-
-                doc.autoTable({
-                    head: [['Candidate', 'Votes', 'Vote Share']],
-                    body: tableData,
-                    startY: startY,
-                    theme: 'grid'
-                });
-                
+                const results = candidates.map(c => [c.name, votes.filter(v => v.candidateId == c.id).length]);
+                if (election.includeNota) results.push(['NOTA', votes.filter(v => v.candidateId == 'NOTA').length]);
+                doc.autoTable({ head: [['Ballot Option', 'Total Votes']], body: results, startY: startY });
                 startY = doc.lastAutoTable.finalY + 15;
             }
         });
-
-        doc.save(`Detailed_Report_${election.name}.pdf`);
+        doc.save(`Audit_Report_${election.name}.pdf`);
     };
-    
-    // --- INSTRUCTIONS AND SAMPLE DATA ---
-    document.getElementById('instructions-btn').addEventListener('click', () => {
-        const instructionsHTML = `
-            <div class="text-left text-sm space-y-3">
-                <p>Follow these steps to conduct a successful election:</p>
-                <ol class="list-decimal list-inside space-y-2">
-                    <li><strong>Setup School:</strong> After logging in, enter your official school name and code to load the institution details.</li>
-                    <li><strong>Upload Student Data:</strong>
-                        <ul class="list-disc list-inside ml-4">
-                            <li>Click "Download Sample File" to get a template.</li>
-                            <li>Fill the Excel file with your student data. The headers must be <strong>name, class, gender</strong>.</li>
-                            <li>Click "Choose File" and select your completed Excel file. A progress bar will show the import status.</li>
-                        </ul>
-                    </li>
-                    <li><strong>Create & Manage Elections:</strong> Create one or more elections. You can edit or delete them before voting starts. Select an election to make it active for adding candidates and voting.</li>
-                    <li><strong>Add & Manage Candidates:</strong> For the active election, add candidates. You can delete them from the list before voting for their class begins.</li>
-                    <li><strong>Start Voting:</strong>
-                        <ul class="list-disc list-inside ml-4">
-                            <li>Go to "Start Voting" and select a class.</li>
-                            <li>Enter the election password. The screen will go into fullscreen mode.</li>
-                            <li>The voter uses the mouse to click on their chosen candidate. A beep will confirm the vote.</li>
-                            <li>The admin (you) presses the <strong>TAB</strong> key to advance to the next voter.</li>
-                            <li>After the last student has voted, the admin presses the <strong>ESC</strong> key and enters the password to end the session for that class.</li>
-                        </ul>
-                    </li>
-                    <li><strong>Start Counting:</strong> Once voting is complete, go to "Start Counting" and select a class. If there is a draw, a winner will be chosen automatically by a random tie-breaker.</li>
-                    <li><strong>View Reports:</strong> After all classes are counted, go to "View Reports" to generate and download detailed PDF reports.</li>
-                    <li><strong>Data Management:</strong> Use the "Export Data" button to save a backup of all your election data. Use "Import Data" on another computer to load this backup and continue your work.</li>
-                </ol>
-                <p class="font-bold mt-4">Important: All data is saved in your browser's local storage. It is not sent online. Clearing your browser's cache may erase the data.</p>
-            </div>
-        `;
-        showModal({
-            title: 'How to Use the Election System',
-            body: instructionsHTML,
-            cancelText: 'Close'
-        });
-    });
-
-    document.getElementById('download-sample-btn').addEventListener('click', () => {
-        const sampleData = [
-            { name: "John Doe", class: "10 A", gender: "Male" },
-            { name: "Jane Smith", class: "10 A", gender: "Female" },
-            { name: "Peter Jones", class: "9 B", gender: "Male" }
-        ];
-        const worksheet = XLSX.utils.json_to_sheet(sampleData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
-        XLSX.writeFile(workbook, "student_data_sample.xlsx");
-    });
 
     // --- DATA MANAGEMENT ---
     document.getElementById('export-data-btn').addEventListener('click', () => {
@@ -1701,41 +1559,35 @@ document.addEventListener('DOMContentLoaded', () => {
             const url = URL.createObjectURL(dataBlob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `election_data_backup_${new Date().toISOString().slice(0,10)}.json`;
+            link.download = `backup_${appData.school?.name || 'election'}_${new Date().toISOString().slice(0,10)}.json`;
             link.click();
             URL.revokeObjectURL(url);
-            showModal({ title: 'Success', body: 'Data exported successfully.', cancelText: 'OK' });
+            showModal({ title: 'Export Successful', body: 'Backup file generated. Keep this file safe for data restoration.', cancelText: 'OK' });
         } catch (error) {
-            showModal({ title: 'Error', body: 'Could not export data.', cancelText: 'OK' });
+            showModal({ title: 'Export Failed', body: 'Error occurred while generating backup.', cancelText: 'OK' });
         }
     });
 
     document.getElementById('import-data-input').addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = (event) => {
             try {
                 const importedData = JSON.parse(event.target.result);
                 showModal({
-                    title: 'Confirm Import',
-                    body: 'Are you sure you want to import this data? This will overwrite all current election data.',
-                    confirmText: 'Import',
-                    onConfirm: () => {
-                        appData = importedData;
-                        saveState();
-                        window.location.reload();
-                    }
+                    title: 'Overwrite Confirmation',
+                    body: 'Importing will replace all current data. Ensure you have exported current progress first.',
+                    confirmText: 'Proceed with Import',
+                    onConfirm: () => { appData = importedData; saveState(); window.location.reload(); }
                 });
             } catch (error) {
-                showModal({ title: 'Error', body: 'Invalid or corrupted data file.', cancelText: 'OK' });
+                showModal({ title: 'Import Failed', body: 'The selected file is not a valid backup.', cancelText: 'OK' });
             }
         };
         reader.readAsText(file);
-        e.target.value = ''; // Reset input
+        e.target.value = '';
     });
-
 
     // --- INITIAL LOAD ---
     const initializeApp = async () => {
@@ -1743,14 +1595,15 @@ document.addEventListener('DOMContentLoaded', () => {
             await db.init();
             const response = await fetch('schools.json');
             if (!response.ok) {
-                document.body.innerHTML = `<div class="p-8 text-center text-red-600">
-                    <h1 class="text-2xl font-bold">Action Required: Local Server Needed</h1>
-                    <p class="mt-4">For security reasons, browsers block access to local files like <strong>schools.json</strong> unless the page is served from a web server.</p>
-                    <div class="mt-6 bg-gray-800 text-green-400 p-4 rounded-lg font-mono text-left max-w-md mx-auto">
-                        <p># If you have Python installed:</p>
-                        <p>python -m http.server</p>
-                        <p class="mt-4"># Then open in your browser:</p>
-                        <p>http://localhost:8000</p>
+                document.body.innerHTML = `<div class="p-12 text-center text-white flex flex-col items-center justify-center min-h-screen bg-slate-950">
+                    <div class="bg-rose-500/10 p-4 rounded-full mb-6 text-rose-500"><svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></div>
+                    <h1 class="text-3xl font-black mb-4">Local Environment Setup Required</h1>
+                    <p class="max-w-md text-slate-400 leading-relaxed mb-10">Browsers require a web server to access <strong>schools.json</strong>. Running the HTML file directly will not work.</p>
+                    <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl font-mono text-left max-w-lg w-full text-sm">
+                        <p class="text-blue-400 mb-2"># If you have Python installed, run this in your folder:</p>
+                        <p class="text-emerald-400 bg-slate-950 p-3 rounded-xl mb-6 select-all">python -m http.server</p>
+                        <p class="text-blue-400 mb-2"># Then visit this address:</p>
+                        <p class="text-emerald-400 bg-slate-950 p-3 rounded-xl select-all">http://localhost:8000</p>
                     </div>
                 </div>`;
                 throw new Error('Failed to load schools.json');
@@ -1760,23 +1613,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!localStorage.getItem('welcomeMessageShown')) {
                 showModal({
-                    title: 'IMPORTANT MESSAGE',
-                    body: 'This application saves all data locally in your browser. No data is sent online. Please do not clear your browser history or cache for this site, as it will permanently delete all your election data. Use the "Export Data" feature to create backups.',
+                    title: 'CRITICAL DATA NOTICE',
+                    body: 'All election intelligence is stored locally on this device. Clearing browser history or site data will erase all records. Use the <strong class="text-white">Export Data</strong> feature daily to ensure continuity.',
                     cancelText: 'I Understand',
-                    onCancel: () => {
-                        localStorage.setItem('welcomeMessageShown', 'true');
-                    }
+                    onCancel: () => { localStorage.setItem('welcomeMessageShown', 'true'); }
                 });
             }
-
-        } catch (error) {
-            console.error(error);
-        }
+        } catch (error) { console.error(error); }
     };
     
     initializeApp();
     renderElectionForm();
-
 });
 </script>
 </body>
