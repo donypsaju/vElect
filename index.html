@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>vElect</title>
+    <title>Offline School Election System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Library for reading Excel files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -53,7 +53,7 @@
     <div id="app-container" class="container mx-auto p-4">
         <!-- Header -->
         <header class="bg-white shadow rounded-lg p-4 mb-6 flex justify-between items-center">
-            <h1 id="header-title" class="text-2xl font-bold text-blue-600">vElect - School Election Portal</h1>
+            <h1 id="header-title" class="text-2xl font-bold text-blue-600">School Election Portal</h1>
             <div id="header-buttons" class="flex items-center space-x-4">
                 <button id="instructions-btn" class="hidden bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition">How to Use</button>
                 <button id="logout-button" class="hidden bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition">Logout</button>
@@ -94,7 +94,7 @@
                 <div class="max-w-5xl mx-auto mt-12">
                     <h2 class="text-3xl font-bold text-center mb-8">How It Works in 5 Simple Steps</h2>
                     <div class="space-y-6">
-                        <div class="flex items-start space-x-4"><div class="flex-shrink-0 w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-xl">1</div><div><h4 class="font-bold text-lg">Setup</h4><p class="text-gray-600">Login, enter your school code, and upload your student list from the provided Excel template.</p></div></div>
+                        <div class="flex items-start space-x-4"><div class="flex-shrink-0 w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-xl">1</div><div><h4 class="font-bold text-lg">Setup</h4><p class="text-gray-600">Login, enter your school name and code, and upload your student list from the provided Excel template.</p></div></div>
                         <div class="flex items-start space-x-4"><div class="flex-shrink-0 w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-xl">2</div><div><h4 class="font-bold text-lg">Create Election & Add Candidates</h4><p class="text-gray-600">Create a new election, set a password, and add candidates for each class, including their photos.</p></div></div>
                         <div class="flex items-start space-x-4"><div class="flex-shrink-0 w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-xl">3</div><div><h4 class="font-bold text-lg">Vote</h4><p class="text-gray-600">On election day, start the voting for each class. The system enters a secure fullscreen mode for voters.</p></div></div>
                         <div class="flex items-start space-x-4"><div class="flex-shrink-0 w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-xl">4</div><div><h4 class="font-bold text-lg">Count</h4><p class="text-gray-600">After voting is complete, watch the animated vote counting in real-time and see the winner announced.</p></div></div>
@@ -113,12 +113,21 @@
 
             <!-- STEP 2: School Setup -->
             <div id="school-setup-view" class="view max-w-lg mx-auto bg-white p-8 rounded-xl shadow-md">
-                <h2 class="text-2xl font-bold mb-4">Setup School</h2>
-                <p class="mb-4 text-gray-600">Enter the school code to begin.</p>
-                <input id="school-code-input" type="text" placeholder="School Code" class="w-full p-3 mb-4 border rounded-lg">
-                <div id="school-name-display" class="hidden p-3 mb-4 bg-green-100 text-green-800 rounded-lg"></div>
-                <button id="confirm-school-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition">Confirm School</button>
-                <button id="report-missing-school-btn" class="mt-4 w-full text-sm text-blue-600 hover:underline">Can't find your school?</button>
+                <h2 class="text-2xl font-bold mb-4">Setup Institution</h2>
+                <p class="mb-4 text-gray-600">Enter your institution details to begin.</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Institution Code (Optional)</label>
+                        <input id="school-code-input" type="text" placeholder="e.g. 42003" class="w-full p-3 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Institution Name <span class="text-red-500">*</span></label>
+                        <input id="school-name-input" type="text" placeholder="e.g. Govt. H S S Aruvikkara" class="w-full p-3 border rounded-lg">
+                    </div>
+                </div>
+                <div id="school-name-display" class="hidden p-3 mt-4 bg-green-100 text-green-800 rounded-lg"></div>
+                <button id="confirm-school-btn" class="w-full mt-6 bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition">Confirm & Continue</button>
+                <button id="report-missing-school-btn" class="mt-4 w-full text-sm text-blue-600 hover:underline">Can't find your school in lookup?</button>
             </div>
 
             <!-- Admin Dashboard (Hub for all actions) -->
@@ -463,21 +472,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- STEP 2: SCHOOL SETUP ---
-    document.getElementById('confirm-school-btn').addEventListener('click', () => {
-        const code = document.getElementById('school-code-input').value.trim();
+    // Update school code/name listener to handle manual entry
+    document.getElementById('school-code-input').addEventListener('input', (e) => {
+        const code = e.target.value.trim();
         const schoolInfo = schoolsData.find(school => 
             school.school_code === code || 
             school.hss_code === code || 
             school.vhse_code === code
         );
-        
         if (schoolInfo) {
-            appData.school = { code, name: schoolInfo.school_name };
+            document.getElementById('school-name-input').value = schoolInfo.school_name;
+        }
+    });
+
+    document.getElementById('confirm-school-btn').addEventListener('click', () => {
+        const code = document.getElementById('school-code-input').value.trim();
+        const name = document.getElementById('school-name-input').value.trim();
+        
+        if (name) {
+            appData.school = { code: code || 'N/A', name: name };
             saveState();
             showView('admin-dashboard-view');
             renderAdminDashboard();
         } else {
-            showModal({ title: 'Error', body: 'Invalid School Code. Please try again or report if your school is missing.', cancelText: 'OK' });
+            showModal({ title: 'Error', body: 'Institution Name is compulsory. Please enter it to continue.', cancelText: 'OK' });
         }
     });
 
@@ -621,8 +639,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const createElection = () => {
-        const name = document.getElementById('election-name').value;
-        const password = document.getElementById('election-password').value;
+        const name = document.getElementById('election-name').value.trim();
+        const password = document.getElementById('election-password').value.trim();
         const includeNota = document.getElementById('include-nota').checked;
         if (name && password) {
             appData.elections.push({
@@ -645,8 +663,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateElection = (electionId) => {
         const election = appData.elections.find(e => e.id === electionId);
         if (election) {
-            election.name = document.getElementById('election-name').value;
-            election.password = document.getElementById('election-password').value;
+            election.name = document.getElementById('election-name').value.trim();
+            election.password = document.getElementById('election-password').value.trim();
             election.includeNota = document.getElementById('include-nota').checked;
             saveState();
             renderAdminDashboard();
@@ -764,6 +782,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('candidate-name-select').innerHTML = '<option>Select a student</option>';
             document.getElementById('candidate-gender').value = '';
             document.getElementById('candidate-image-input').value = '';
+            document.getElementById('candidate-image-input').value = null;
         } catch (error) {
             console.error("Failed to add candidate image to DB:", error);
             showModal({ title: 'Error', body: 'Could not save candidate image. The database might be full or corrupted.', cancelText: 'OK' });
@@ -1150,6 +1169,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const startCountingForClass = (className) => {
         renderCountingScreen(className);
         showView('counting-screen-view');
+        enterFullScreen(document.documentElement); // Enter fullscreen
     };
 
     const renderCountingScreen = (className) => {
@@ -1158,26 +1178,44 @@ document.addEventListener('DOMContentLoaded', () => {
         const candidates = election.candidates
             .filter(c => c.class === className)
             .map(c => ({ ...c, votes: 0 }));
+            
+        const totalCandidates = candidates.length + (election.includeNota ? 1 : 0);
+        let gridClass = 'grid-cols-2';
+        if (totalCandidates > 9) gridClass = 'grid-cols-5';
+        else if (totalCandidates > 6) gridClass = 'grid-cols-4';
+        else if (totalCandidates > 4) gridClass = 'grid-cols-3';
 
         container.innerHTML = `
-            <div class="text-center">
+            <div class="text-center pt-4">
                 <h2 class="text-4xl font-bold">Counting Votes for Class ${className}</h2>
                 <p id="counting-status" class="text-2xl mt-2 text-gray-600">Ready to start counting.</p>
                 <button id="begin-counting-btn" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg text-xl">Begin Counting</button>
             </div>
-            <div id="counting-candidate-list" class="mt-8 space-y-4">
+            <div id="counting-candidate-list" class="grid ${gridClass} gap-4 p-4 mt-8">
                 ${candidates.map(c => `
-                    <div class="candidate-result-item flex items-center bg-white p-4 rounded-lg shadow" data-candidate-id="${c.id}" data-votes="0">
-                        <img id="img-count-${c.id}" src="" class="w-16 h-16 rounded-full mr-4 object-cover bg-gray-200">
-                        <div class="flex-grow">
-                            <h3 class="text-xl font-bold">${c.name}</h3>
-                            <div class="w-full bg-gray-200 rounded-full h-4 mt-1">
-                                <div class="bg-blue-600 h-4 rounded-full" style="width: 0%;"></div>
-                            </div>
+                    <div class="candidate-result-item flex flex-col items-center bg-white p-4 rounded-lg shadow" data-candidate-id="${c.id}" data-votes="0">
+                        <img id="img-count-${c.id}" src="" class="w-24 h-24 rounded-full mb-2 object-cover bg-gray-200">
+                        <h3 class="text-xl font-bold text-center">${c.name}</h3>
+                        <div class="w-full bg-gray-200 rounded-full h-4 mt-2">
+                            <div class="bg-blue-600 h-4 rounded-full progress-bar" style="width: 0%;"></div>
                         </div>
-                        <div class="text-2xl font-bold w-24 text-right" id="vote-count-${c.id}">0</div>
+                        <div class="text-3xl font-bold mt-2" id="vote-count-${c.id}">0</div>
                     </div>
                 `).join('')}
+                ${election.includeNota ? `
+                    <div class="candidate-result-item flex flex-col items-center bg-gray-100 p-4 rounded-lg shadow" data-candidate-id="NOTA" data-votes="0">
+                         <div class="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center border-4 border-gray-400 mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-center">NOTA</h3>
+                        <div class="w-full bg-gray-200 rounded-full h-4 mt-2">
+                            <div class="bg-gray-500 h-4 rounded-full progress-bar" style="width: 0%;"></div>
+                        </div>
+                        <div class="text-3xl font-bold mt-2" id="vote-count-NOTA">0</div>
+                    </div>
+                ` : ''}
             </div>
         `;
 
@@ -1213,7 +1251,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (i >= totalVotes) {
                 clearInterval(interval);
                 document.getElementById('counting-status').textContent = 'Counting Complete!';
-                showResultModal(className);
+                setTimeout(() => {
+                    exitFullScreen();
+                    showResultModal(className);
+                }, 1500);
                 return;
             }
 
@@ -1224,6 +1265,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const candidateCard = document.querySelector(`.candidate-result-item[data-candidate-id='${candidateId}']`);
             
             if (candidateCard) {
+                // Fixed increment logic
+                const countDisplay = document.getElementById(`vote-count-${candidateId}`);
+                const currentVotes = parseInt(candidateCard.dataset.votes) + 1;
+                candidateCard.dataset.votes = currentVotes;
+                countDisplay.textContent = currentVotes;
+                
+                const progressBar = candidateCard.querySelector('.progress-bar');
+                const percentage = totalVotes > 0 ? (currentVotes / totalVotes) * 100 : 0;
+                progressBar.style.width = `${percentage}%`;
+                
+                // Animate 
                 const voteEl = document.createElement('div');
                 voteEl.innerHTML = '🗳️';
                 voteEl.className = 'counting-vote';
@@ -1239,20 +1291,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 setTimeout(() => {
                     voteEl.remove();
-                    const currentVotes = parseInt(candidateCard.dataset.votes) + 1;
-                    candidateCard.dataset.votes = currentVotes;
-                    document.getElementById(`vote-count-${candidateId}`).textContent = currentVotes;
-                    const percentage = totalVotes > 0 ? (currentVotes / totalVotes) * 100 : 0;
-                    candidateCard.querySelector('.bg-blue-600').style.width = `${percentage}%`;
-                    const list = document.getElementById('counting-candidate-list');
-                    const items = Array.from(list.children);
-                    items.sort((a, b) => parseInt(b.dataset.votes) - parseInt(a.dataset.votes));
-                    items.forEach(item => list.appendChild(item));
                 }, 500);
             }
 
             i++;
-        }, 1000);
+        }, 800);
     };
 
     const showResultModal = (className) => {
@@ -1605,7 +1648,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="text-left text-sm space-y-3">
                 <p>Follow these steps to conduct a successful election:</p>
                 <ol class="list-decimal list-inside space-y-2">
-                    <li><strong>Setup School:</strong> After logging in, enter your official school code to load the school name.</li>
+                    <li><strong>Setup School:</strong> After logging in, enter your official school name and code to load the institution details.</li>
                     <li><strong>Upload Student Data:</strong>
                         <ul class="list-disc list-inside ml-4">
                             <li>Click "Download Sample File" to get a template.</li>
@@ -1701,8 +1744,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('schools.json');
             if (!response.ok) {
                 document.body.innerHTML = `<div class="p-8 text-center text-red-600">
-                    <h1 class="text-2xl font-bold">Error: Could not load configuration file.</h1>
-                    <p>Please make sure a valid <strong>schools.json</strong> file is in the same folder as this HTML file and that you are running this from a local web server.</p>
+                    <h1 class="text-2xl font-bold">Action Required: Local Server Needed</h1>
+                    <p class="mt-4">For security reasons, browsers block access to local files like <strong>schools.json</strong> unless the page is served from a web server.</p>
+                    <div class="mt-6 bg-gray-800 text-green-400 p-4 rounded-lg font-mono text-left max-w-md mx-auto">
+                        <p># If you have Python installed:</p>
+                        <p>python -m http.server</p>
+                        <p class="mt-4"># Then open in your browser:</p>
+                        <p>http://localhost:8000</p>
+                    </div>
                 </div>`;
                 throw new Error('Failed to load schools.json');
             }
@@ -1732,4 +1781,3 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
-
